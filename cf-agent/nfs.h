@@ -30,10 +30,10 @@
 #ifndef __MINGW32__
 bool LoadMountInfo(Rlist **list);
 void DeleteMountInfo(Rlist *list);
-int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp);
-int VerifyInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp);
-int VerifyMount(EvalContext *ctx, char *name, Attributes a, Promise *pp);
-int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp);
+PromiseResult VerifyNotInFstab(char *name, Attributes a, Promise *pp);
+PromiseResult VerifyInFstab(char *name, Attributes a, Promise *pp);
+PromiseResult VerifyMount(char *name, Attributes a, Promise *pp);
+PromiseResult VerifyUnmount(char *name, Attributes a, Promise *pp);
 void CleanupNFS(void);
 void MountAll(void);
 #endif /* !__MINGW32__ */

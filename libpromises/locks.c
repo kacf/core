@@ -555,16 +555,7 @@ static void PromiseHash(const Promise *pp, const char *salt, unsigned char diges
 
 CfLock AcquireLock(EvalContext *ctx, char *operand, char *host, time_t now, TransactionContext tc, Promise *pp, int ignoreProcesses)
 {
-    int i, sum = 0;
-    time_t lastcompleted = 0, elapsedtime;
-    char *promise, cc_operator[CF_BUFSIZE], cc_operand[CF_BUFSIZE];
-    char cflock[CF_BUFSIZE], cflast[CF_BUFSIZE], cflog[CF_BUFSIZE];
-    char str_digest[CF_BUFSIZE];
     CfLock this;
-    unsigned char digest[EVP_MAX_MD_SIZE + 1];
-
-    /* Register a cleanup handler */
-    pthread_once(&lock_cleanup_once, &RegisterLockCleanup);
 
     this.last = (char *) CF_UNDEFINED;
     this.lock = (char *) CF_UNDEFINED;
@@ -594,6 +585,35 @@ CfLock AcquireLock(EvalContext *ctx, char *operand, char *host, time_t now, Tran
         /* Must not set promise to be done for editfiles etc */
         EvalContextMarkPromiseDone(ctx, pp);
     }
+
+    return AcquirePromiseLock(operand, host, now, tc, pp, ignoreProcesses);
+}
+
+CfLock AcquirePromiseLock(char *operand, char *host, time_t now, TransactionContext tc, const Promise *pp, int ignoreProcesses)
+{
+    int i, sum = 0;
+    time_t lastcompleted = 0, elapsedtime;
+    char *promise, cc_operator[CF_BUFSIZE], cc_operand[CF_BUFSIZE];
+    char cflock[CF_BUFSIZE], cflast[CF_BUFSIZE], cflog[CF_BUFSIZE];
+    char str_digest[CF_BUFSIZE];
+    CfLock this;
+    unsigned char digest[EVP_MAX_MD_SIZE + 1];
+
+    /* Register a cleanup handler */
+    pthread_once(&lock_cleanup_once, &RegisterLockCleanup);
+
+    this.last = (char *) CF_UNDEFINED;
+    this.lock = (char *) CF_UNDEFINED;
+    this.log = (char *) CF_UNDEFINED;
+
+    if (now == 0)
+    {
+        return this;
+    }
+
+    this.last = NULL;
+    this.lock = NULL;
+    this.log = NULL;
 
     PromiseHash(pp, operand, digest, CF_DEFAULT_DIGEST);
     HashPrintSafe(CF_DEFAULT_DIGEST, digest, str_digest);

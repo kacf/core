@@ -397,16 +397,16 @@ PromiseResult VerifyHardLink(EvalContext *ctx, char *destination, const char *so
 
 #ifdef __MINGW32__
 
-int KillGhostLink(EvalContext *ctx, const char *name, Attributes attr, const Promise *pp)
+PromiseResult KillGhostLink(const PromiseContext *pc, const char *name, const Attributes *attr, const Promise *pp)
 {
     CfOut(OUTPUT_LEVEL_VERBOSE, "", "Windows does not support symbolic links (at KillGhostLink())");
-    cfPS(ctx, OUTPUT_LEVEL_ERROR, PROMISE_RESULT_FAIL, "", pp, attr, " !! Windows does not support killing link \"%s\"", name);
-    return false;
+    cfPOut(pc, OUTPUT_LEVEL_ERROR, "", pp, attr, " !! Windows does not support killing link \"%s\"", name);
+    return PROMISE_RESULT_FAIL;
 }
 
 #else                           /* !__MINGW32__ */
 
-int KillGhostLink(EvalContext *ctx, const char *name, Attributes attr, const Promise *pp)
+PromiseResult KillGhostLink(const PromiseContext *pc, const char *name, const Attributes *attr, const Promise *pp)
 {
     char linkbuf[CF_BUFSIZE], tmp[CF_BUFSIZE];
     char linkpath[CF_BUFSIZE], *sp;
@@ -420,7 +420,7 @@ int KillGhostLink(EvalContext *ctx, const char *name, Attributes attr, const Pro
     if (readlink(name, linkbuf, CF_BUFSIZE - 1) == -1)
     {
         CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! (Can't read link %s while checking for deadlinks)\n", name);
-        return true;            /* ignore */
+        return PROMISE_RESULT_NOOP;            /* ignore */
     }
 
     if (!IsAbsoluteFileName(linkbuf))
@@ -438,7 +438,7 @@ int KillGhostLink(EvalContext *ctx, const char *name, Attributes attr, const Pro
 
     if (cfstat(tmp, &statbuf) == -1)    /* link points nowhere */
     {
-        if ((attr.link.when_no_file == cfa_delete) || (attr.recursion.rmdeadlinks))
+        if ((attr->link.when_no_file == cfa_delete) || (attr->recursion.rmdeadlinks))
         {
             CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! %s is a link which points to %s, but that file doesn't seem to exist\n", name,
                   linkbuf);
@@ -446,14 +446,14 @@ int KillGhostLink(EvalContext *ctx, const char *name, Attributes attr, const Pro
             if (!DONTDO)
             {
                 unlink(name);   /* May not work on a client-mounted system ! */
-                cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_CHANGE, "", pp, attr,
+                cfPOut(pc, OUTPUT_LEVEL_INFORM, "", pp, attr,
                      " -> Removing ghost %s - reference to something that is not there\n", name);
-                return true;
+                return PROMISE_RESULT_CHANGE;
             }
         }
     }
 
-    return false;
+    return PROMISE_RESULT_NOOP;
 }
 #endif /* !__MINGW32__ */
 

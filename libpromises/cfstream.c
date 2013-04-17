@@ -148,19 +148,8 @@ void CfOut(OutputLevel level, const char *errstr, const char *fmt, ...)
     va_end(ap);
 }
 
-static void AmendErrorMessageWithPromiseInformation(EvalContext *ctx, Item **error_message, const Promise *pp)
+static void AmendErrorMessageWithPromiseInformation(const PromiseContext *pc, Item **error_message, const Promise *pp)
 {
-    Rval retval;
-    char *v;
-    if (EvalContextVariableControlCommonGet(ctx, COMMON_CONTROL_VERSION, &retval))
-    {
-        v = (char *) retval.item;
-    }
-    else
-    {
-        v = "not specified";
-    }
-
     const char *sp;
     char handle[CF_MAXVARSIZE];
     if ((sp = PromiseGetHandle(pp)) || (sp = PromiseID(pp)))
@@ -182,7 +171,7 @@ static void AmendErrorMessageWithPromiseInformation(EvalContext *ctx, Item **err
     if (pp && PromiseGetBundle(pp)->source_path)
     {
         snprintf(output, CF_BUFSIZE - 1, "I: Made in version \'%s\' of \'%s\' near line %zu",
-                 v, PromiseGetBundle(pp)->source_path, pp->offset.line);
+                 pc->version, PromiseGetBundle(pp)->source_path, pp->offset.line);
     }
     else
     {
@@ -220,6 +209,103 @@ static void AmendErrorMessageWithPromiseInformation(EvalContext *ctx, Item **err
     }
 }
 
+void cfPOut(const PromiseContext *pc, OutputLevel level, const char *errstr, const Promise *pp, const Attributes *attr, const char *fmt, ...)
+{
+    if ((fmt == NULL) || (strlen(fmt) == 0))
+    {
+        return;
+    }
+
+    va_list ap;
+    va_start(ap, fmt);
+    vcfPOut(pc, level, errstr, pp, attr, fmt, ap);
+    va_end(ap);
+}
+
+void vcfPOut(const PromiseContext *pc, OutputLevel level, const char *errstr, const Promise *pp, const Attributes *attr, const char *fmt, va_list ap)
+{
+    if ((fmt == NULL) || (strlen(fmt) == 0))
+    {
+        return;
+    }
+
+    char buffer[CF_BUFSIZE];
+    vsnprintf(buffer, CF_BUFSIZE - 1, fmt, ap);
+
+    if (Chop(buffer, CF_EXPANDSIZE) == -1)
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "Chop was called on a string that seemed to have no terminator");
+    }
+
+    Item *mess = NULL;
+    AppendItem(&mess, buffer, NULL);
+
+    if ((errstr == NULL) || (strlen(errstr) > 0))
+    {
+        char output[CF_BUFSIZE];
+        snprintf(output, CF_BUFSIZE - 1, " !!! System reports error for %s: \"%s\"", errstr, GetErrorStr());
+        AppendItem(&mess, output, NULL);
+    }
+
+    if (level == OUTPUT_LEVEL_ERROR)
+    {
+        AmendErrorMessageWithPromiseInformation(pc, &mess, pp);
+    }
+
+    int verbose = (attr.transaction.report_level == OUTPUT_LEVEL_VERBOSE) || VERBOSE;
+
+    switch (level)
+    {
+    case OUTPUT_LEVEL_INFORM:
+
+        if (INFORM || (attr.transaction.report_level == OUTPUT_LEVEL_INFORM)
+            || VERBOSE || (attr.transaction.report_level == OUTPUT_LEVEL_VERBOSE)
+            || DEBUG)
+        {
+            LogListStdout(mess, verbose);
+        }
+
+        if (attr.transaction.log_level == OUTPUT_LEVEL_INFORM)
+        {
+            SystemLog(mess, level);
+        }
+        break;
+
+    case OUTPUT_LEVEL_VERBOSE:
+
+        if (VERBOSE || (attr.transaction.log_level == OUTPUT_LEVEL_VERBOSE)
+            || DEBUG)
+        {
+            LogListStdout(mess, verbose);
+        }
+
+        if (attr.transaction.log_level == OUTPUT_LEVEL_VERBOSE)
+        {
+            SystemLog(mess, level);
+        }
+
+        break;
+
+    case OUTPUT_LEVEL_ERROR:
+
+        LogListStdout(mess, verbose);
+
+        if (attr.transaction.log_level == OUTPUT_LEVEL_ERROR)
+        {
+            SystemLog(mess, level);
+        }
+        break;
+
+    case OUTPUT_LEVEL_NONE:
+        break;
+
+    default:
+        ProgrammingError("Unexpected output level (%d) passed to cfPS", level);
+    }
+
+    DeleteItemList(mess);
+}
+
 void cfPS(EvalContext *ctx, OutputLevel level, PromiseResult status, const char *errstr, const Promise *pp, Attributes attr, const char *fmt, ...)
 {
     if ((fmt == NULL) || (strlen(fmt) == 0))
@@ -250,7 +336,9 @@ void cfPS(EvalContext *ctx, OutputLevel level, PromiseResult status, const char 
 
     if (level == OUTPUT_LEVEL_ERROR)
     {
-        AmendErrorMessageWithPromiseInformation(ctx, &mess, pp);
+        PromiseContext pc;
+        FillPromiseContext(&pc, ctx);
+        AmendErrorMessageWithPromiseInformation(&pc, &mess, pp);
     }
 
     int verbose = (attr.transaction.report_level == OUTPUT_LEVEL_VERBOSE) || VERBOSE;

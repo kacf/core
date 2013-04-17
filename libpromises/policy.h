@@ -135,6 +135,14 @@ struct Constraint_
     SourceOffset offset;
 };
 
+struct PromiseContext_
+{
+    // Only pointers. No ownership.
+    char *version;
+};
+
+void FillPromiseContext(PromiseContext *pc, const EvalContext *ctx);
+
 const char *NamespaceDefault(void);
 
 Policy *PolicyNew(void);

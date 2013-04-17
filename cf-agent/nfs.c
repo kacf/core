@@ -327,18 +327,18 @@ void DeleteMountInfo(Rlist *list)
 
 /*******************************************************************/
 
-int VerifyInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
-/* Ensure filesystem IS in fstab, and return no of changes */
+PromiseResult VerifyInFstab(char *name, Attributes a, Promise *pp)
 {
     char fstab[CF_BUFSIZE];
     char *host, *rmountpt, *mountpt, *fstype, *opts;
+    PromiseResult res = PROMISE_RESULT_NOOP;
 
     if (!FSTABLIST)
     {
         if (!LoadFileAsItemList(&FSTABLIST, VFSTAB[VSYSTEMHARDCLASS], a.edits))
         {
             CfOut(OUTPUT_LEVEL_ERROR, "", "Couldn't open %s!\n", VFSTAB[VSYSTEMHARDCLASS]);
-            return false;
+            return PROMISE_RESULT_FAIL;
         }
         else
         {
@@ -393,27 +393,28 @@ int VerifyInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
         FSTAB_EDITS++;
         cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_CHANGE, "", pp, a, "Adding file system %s:%s seems to %s.\n", host, rmountpt,
              VFSTAB[VSYSTEMHARDCLASS]);
+        res = PROMISE_RESULT_CHANGE;
     }
 
     free(opts);
-    return 0;
+    return res;
 }
 
 /*******************************************************************/
 
-int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
-/* Ensure filesystem is NOT in fstab, and return no of changes */
+PromiseResult VerifyNotInFstab(char *name, Attributes a, Promise *pp)
 {
     char regex[CF_BUFSIZE];
     char *host, *mountpt, *opts;
     Item *ip;
+    PromiseResult res = PROMISE_RESULT_NOOP;
 
     if (!FSTABLIST)
     {
         if (!LoadFileAsItemList(&FSTABLIST, VFSTAB[VSYSTEMHARDCLASS], a.edits))
         {
             CfOut(OUTPUT_LEVEL_ERROR, "", "Couldn't open %s!\n", VFSTAB[VSYSTEMHARDCLASS]);
-            return false;
+            return PROMISE_RESULT_FAIL;
         }
         else
         {
@@ -446,7 +447,7 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
             if ((pfp = cf_popen(aixcomm, "r", true)) == NULL)
             {
                 cfPS(ctx, OUTPUT_LEVEL_ERROR, PROMISE_RESULT_FAIL, "", pp, a, "Failed to invoke /usr/sbin/rmnfsmnt to edit fstab");
-                return 0;
+                return PROMISE_RESULT_FAIL;
             }
 
             for (;;)
@@ -457,7 +458,7 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
                 {
                     cfPS(ctx, OUTPUT_LEVEL_ERROR, PROMISE_RESULT_FAIL, "fread", pp, a, "Unable to read output of /bin/rmnfsmnt");
                     cf_pclose(pfp);
-                    return 0;
+                    return PROMISE_RESULT_FAIL;
                 }
 
                 if (res == 0)
@@ -474,13 +475,13 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
                 {
                     cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_INTERRUPTED, "", pp, a, "The device under %s cannot be removed from %s\n",
                          mountpt, VFSTAB[VSYSTEMHARDCLASS]);
-                    return 0;
+                    return PROMISE_RESULT_INTERRUPTED;
                 }
             }
 
             cf_pclose(pfp);
 
-            return 0;       /* ignore internal editing for aix , always returns 0 changes */
+            return PROMISE_RESULT_NOOP; /* ignore internal editing for aix , always returns 0 changes */
 #else
             snprintf(regex, CF_BUFSIZE, ".*[\\s]+%s[\\s]+.*", mountpt);
 
@@ -492,6 +493,7 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
                     // Check host name matches too?
                     DeleteThisItem(&FSTABLIST, ip);
                     FSTAB_EDITS++;
+                    res = PROMISE_RESULT_CHANGE;
                 }
             }
 #endif
@@ -503,12 +505,12 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
         free(opts);
     }
 
-    return 0;
+    return res;
 }
 
 /*******************************************************************/
 
-int VerifyMount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
+PromiseResult VerifyMount(char *name, Attributes a, Promise *pp)
 {
     char comm[CF_BUFSIZE], line[CF_BUFSIZE];
     FILE *pfp;
@@ -535,7 +537,7 @@ int VerifyMount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
         if ((pfp = cf_popen(comm, "r", true)) == NULL)
         {
             CfOut(OUTPUT_LEVEL_ERROR, "", " !! Failed to open pipe from %s\n", CommandArg0(VMOUNTCOMM[VSYSTEMHARDCLASS]));
-            return 0;
+            return PROMISE_RESULT_NOOP;
         }
 
         ssize_t res = CfReadLine(line, CF_BUFSIZE, pfp);
@@ -544,14 +546,14 @@ int VerifyMount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
         {
             CfOut(OUTPUT_LEVEL_ERROR, "fread", "Unable to read output of mount command");
             cf_pclose(pfp);
-            return 0;
+            return PROMISE_RESULT_NOOP;
         }
 
         if (res != 0 && ((strstr(line, "busy")) || (strstr(line, "Busy"))))
         {
             cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_INTERRUPTED, "", pp, a, " !! The device under %s cannot be mounted\n", mountpt);
             cf_pclose(pfp);
-            return 1;
+            return PROMISE_RESULT_INTERRUPTED;
         }
 
         cf_pclose(pfp);
@@ -561,12 +563,12 @@ int VerifyMount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
     free(opts);
 
     cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_CHANGE, "", pp, a, " -> Mounting %s to keep promise\n", mountpt);
-    return 0;
+    return PROMISE_RESULT_CHANGE;
 }
 
 /*******************************************************************/
 
-int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
+PromiseResult VerifyUnmount(char *name, Attributes a, Promise *pp)
 {
     char comm[CF_BUFSIZE], line[CF_BUFSIZE];
     FILE *pfp;
@@ -581,7 +583,7 @@ int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
         if ((pfp = cf_popen(comm, "r", true)) == NULL)
         {
             CfOut(OUTPUT_LEVEL_ERROR, "", " !! Failed to open pipe from %s\n", VUNMOUNTCOMM[VSYSTEMHARDCLASS]);
-            return 0;
+            return PROMISE_RESULT_NOOP;
         }
 
         ssize_t res = CfReadLine(line, CF_BUFSIZE, pfp);
@@ -590,21 +592,21 @@ int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
         {
             CfOut(OUTPUT_LEVEL_ERROR, "fread", "Unable to read output of unmount command");
             cf_pclose(pfp);
-            return 0;
+            return PROMISE_RESULT_NOOP;
         }
 
         if (res != 0 && ((strstr(line, "busy")) || (strstr(line, "Busy"))))
         {
             cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_INTERRUPTED, "", pp, a, " !! The device under %s cannot be unmounted\n", mountpt);
             cf_pclose(pfp);
-            return 1;
+            return PROMISE_RESULT_INTERRUPTED;
         }
 
         cf_pclose(pfp);
     }
 
     cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_CHANGE, "", pp, a, " -> Unmounting %s to keep promise\n", mountpt);
-    return 0;
+    return PROMISE_RESULT_CHANGE;
 }
 
 /*******************************************************************/

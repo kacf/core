@@ -56,31 +56,32 @@
 
 #include <assert.h>
 
-int MoveObstruction(EvalContext *ctx, char *from, Attributes attr, Promise *pp)
+PromiseResult MoveObstruction(const PromiseContext *pc, const char *from, const Attributes *attr, const Promise *pp)
 {
     struct stat sb;
     char stamp[CF_BUFSIZE], saved[CF_BUFSIZE];
     time_t now_stamp = time((time_t *) NULL);
+    PromiseResult res = PROMISE_RESULT_NOOP;
 
     if (lstat(from, &sb) == 0)
     {
-        if (!attr.move_obstructions)
+        if (!attr->move_obstructions)
         {
-            cfPS(ctx, OUTPUT_LEVEL_VERBOSE, PROMISE_RESULT_FAIL, "", pp, attr, " !! Object %s exists and is obstructing our promise\n", from);
-            return false;
+            cfPOut(pc, OUTPUT_LEVEL_VERBOSE, "", pp, attr, " !! Object %s exists and is obstructing our promise\n", from);
+            return PROMISE_RESULT_FAIL;
         }
 
         if (!S_ISDIR(sb.st_mode))
         {
             if (DONTDO)
             {
-                return false;
+                return PROMISE_RESULT_NOOP;
             }
 
             saved[0] = '\0';
             strcpy(saved, from);
 
-            if (attr.copy.backup == BACKUP_OPTION_TIMESTAMP || attr.edits.backup == BACKUP_OPTION_TIMESTAMP)
+            if (attr->copy.backup == BACKUP_OPTION_TIMESTAMP || attr->edits.backup == BACKUP_OPTION_TIMESTAMP)
             {
                 snprintf(stamp, CF_BUFSIZE, "_%jd_%s", (intmax_t) CFSTARTTIME, CanonifyName(cf_ctime(&now_stamp)));
                 strcat(saved, stamp);
@@ -88,29 +89,31 @@ int MoveObstruction(EvalContext *ctx, char *from, Attributes attr, Promise *pp)
 
             strcat(saved, CF_SAVED);
 
-            cfPS(ctx, OUTPUT_LEVEL_VERBOSE, PROMISE_RESULT_CHANGE, "", pp, attr, " -> Moving file object %s to %s\n", from, saved);
+            cfPOut(pc, OUTPUT_LEVEL_VERBOSE, "", pp, attr, " -> Moving file object %s to %s\n", from, saved);
+            res = PROMISE_RESULT_CHANGE;
 
             if (cf_rename(from, saved) == -1)
             {
-                cfPS(ctx, OUTPUT_LEVEL_ERROR, PROMISE_RESULT_FAIL, "cf_rename", pp, attr, " !! Can't rename %s to %s\n", from, saved);
-                return false;
+                cfPOut(pc, OUTPUT_LEVEL_ERROR, "cf_rename", pp, attr, " !! Can't rename %s to %s\n", from, saved);
+                return PROMISE_RESULT_FAIL;
             }
 
-            if (ArchiveToRepository(saved, attr))
+            if (ArchiveToRepository(saved, *attr))
             {
                 unlink(saved);
             }
 
-            return true;
+            return res;
         }
 
         if (S_ISDIR(sb.st_mode))
         {
-            cfPS(ctx, OUTPUT_LEVEL_VERBOSE, PROMISE_RESULT_CHANGE, "", pp, attr, " -> Moving directory %s to %s%s\n", from, from, CF_SAVED);
+            cfPOut(pc, OUTPUT_LEVEL_VERBOSE, "", pp, attr, " -> Moving directory %s to %s%s\n", from, from, CF_SAVED);
+            res = PROMISE_RESULT_CHANGE;
 
             if (DONTDO)
             {
-                return false;
+                return PROMISE_RESULT_NOOP;
             }
 
             saved[0] = '\0';
@@ -123,21 +126,21 @@ int MoveObstruction(EvalContext *ctx, char *from, Attributes attr, Promise *pp)
 
             if (cfstat(saved, &sb) != -1)
             {
-                cfPS(ctx, OUTPUT_LEVEL_ERROR, PROMISE_RESULT_FAIL, "", pp, attr, " !! Couldn't save directory %s, since %s exists already\n", from,
+                cfPOut(pc, OUTPUT_LEVEL_ERROR, "", pp, attr, " !! Couldn't save directory %s, since %s exists already\n", from,
                      saved);
                 CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to force link to existing directory %s\n", from);
-                return false;
+                return PROMISE_RESULT_FAIL;
             }
 
             if (cf_rename(from, saved) == -1)
             {
-                cfPS(ctx, OUTPUT_LEVEL_ERROR, PROMISE_RESULT_FAIL, "cf_rename", pp, attr, "Can't rename %s to %s\n", from, saved);
-                return false;
+                cfPOut(pc, OUTPUT_LEVEL_ERROR, "cf_rename", pp, attr, "Can't rename %s to %s\n", from, saved);
+                return PROMISE_RESULT_FAIL;
             }
         }
     }
 
-    return true;
+    return res;
 }
 
 /*********************************************************************/

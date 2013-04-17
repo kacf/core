@@ -30,6 +30,8 @@
 
 void CfOut(OutputLevel level, const char *errstr, const char *fmt, ...) FUNC_ATTR_PRINTF(3, 4);
 void cfPS(EvalContext *ctx, OutputLevel level, PromiseResult status, const char *errstr, const Promise *pp, Attributes attr, const char *fmt, ...) FUNC_ATTR_PRINTF(7, 8);
+void cfPOut(const PromiseContext *pc, OutputLevel level, const char *errstr, const Promise *pp, const Attributes *attr, const char *fmt, ...) FUNC_ATTR_PRINTF(6, 7);
+void vcfPOut(const PromiseContext *pc, OutputLevel level, const char *errstr, const Promise *pp, const Attributes *attr, const char *fmt, va_list ap);
 
 /* reports.report_to_file */
 void ReportToFile(const char *logfile, const char *report);

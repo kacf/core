@@ -45,15 +45,16 @@
 #include "cf.nova.h"
 #endif
 
-void LocateFilePromiserGroup(EvalContext *ctx, char *wildpath, Promise *pp, void (*fnptr) (EvalContext *ctx, char *path, Promise *ptr))
+void LocateFilePromiserGroup(EvalContext *ctx, char *wildpath, const Promise *pp,
+                             void (*fnptr) (EvalContext *ctx, char *path, const Promise *ptr, const Attributes *a))
 {
     Item *path, *ip, *remainder = NULL;
     char pbuffer[CF_BUFSIZE];
     struct stat statbuf;
     int count = 0, lastnode = false, expandregex = false;
     uid_t agentuid = getuid();
-    int create = PromiseGetConstraintAsBoolean(ctx, "create", pp);
-    char *pathtype = ConstraintGetRvalValue(ctx, "pathtype", pp, RVAL_TYPE_SCALAR);
+    int create = a->create;
+    const char *pathtype = a->pathtype;
 
     CfDebug("LocateFilePromiserGroup(%s)\n", wildpath);
 
@@ -62,7 +63,7 @@ void LocateFilePromiserGroup(EvalContext *ctx, char *wildpath, Promise *pp, void
     if ((!IsPathRegex(wildpath)) || (pathtype && (strcmp(pathtype, "literal") == 0)))
     {
         CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Using literal pathtype for %s\n", wildpath);
-        (*fnptr) (ctx, wildpath, pp);
+        (*fnptr) (ctx, wildpath, pp, a);
         return;
     }
     else
@@ -130,7 +131,7 @@ void LocateFilePromiserGroup(EvalContext *ctx, char *wildpath, Promise *pp, void
         {
             // Could be a dummy directory to be created so this is not an error.
             CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Using best-effort expanded (but non-existent) file base path %s\n", wildpath);
-            (*fnptr) (ctx, wildpath, pp);
+            (*fnptr) (ctx, wildpath, pp, a);
             DeleteItemList(path);
             return;
         }
@@ -208,7 +209,7 @@ void LocateFilePromiserGroup(EvalContext *ctx, char *wildpath, Promise *pp, void
     else
     {
         CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Using file base path %s\n", pbuffer);
-        (*fnptr) (ctx, pbuffer, pp);
+        (*fnptr) (ctx, pbuffer, pp, a);
     }
 
     if (count == 0)
@@ -217,7 +218,7 @@ void LocateFilePromiserGroup(EvalContext *ctx, char *wildpath, Promise *pp, void
 
         if (create)
         {
-            (*fnptr)(ctx, pp->promiser, pp);
+            (*fnptr)(ctx, pp->promiser, pp, a);
         }
     }
 

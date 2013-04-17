@@ -49,32 +49,32 @@
 Rlist *MOUNTEDFSLIST;
 int CF_MOUNTALL;
 
-static void FindStoragePromiserObjects(EvalContext *ctx, Promise *pp);
-static int VerifyFileSystem(EvalContext *ctx, char *name, Attributes a, Promise *pp);
-static int VerifyFreeSpace(EvalContext *ctx, char *file, Attributes a, Promise *pp);
-static void VolumeScanArrivals(char *file, Attributes a, Promise *pp);
+static void FindStoragePromiserObjects(EvalContext *ctx, const Promise *pp);
+static int VerifyFileSystem(char *name, Attributes a, const Promise *pp);
+static int VerifyFreeSpace(char *file, Attributes a, const Promise *pp);
+static void VolumeScanArrivals(char *file, Attributes a, const Promise *pp);
 #if !defined(__MINGW32__)
 static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, Attributes a);
 static int IsForeignFileSystem(struct stat *childstat, char *dir);
 #endif
 
 #ifndef __MINGW32__
-static int VerifyMountPromise(EvalContext *ctx, char *file, Attributes a, Promise *pp);
+static int VerifyMountPromise(char *file, Attributes a, Promise *pp);
 #endif /* !__MINGW32__ */
 
 /*****************************************************************************/
 
-void *FindAndVerifyStoragePromises(EvalContext *ctx, Promise *pp)
+void *FindAndVerifyStoragePromises(const Promise *pp, const Attributes *a)
 {
     PromiseBanner(pp);
-    FindStoragePromiserObjects(ctx, pp);
+    FindStoragePromiserObjects(NULL, pp);
 
     return (void *) NULL;
 }
 
 /*****************************************************************************/
 
-static void FindStoragePromiserObjects(EvalContext *ctx, Promise *pp)
+static void FindStoragePromiserObjects(EvalContext *ctx, const Promise *pp)
 {
 /* Check if we are searching over a regular expression */
 
@@ -83,17 +83,14 @@ static void FindStoragePromiserObjects(EvalContext *ctx, Promise *pp)
 
 /*****************************************************************************/
 
-void VerifyStoragePromise(EvalContext *ctx, char *path, Promise *pp)
+void VerifyStoragePromise(EvalContext *ctx, char *path, const Promise *pp, const Attributes *a)
 {
-    Attributes a = { {0} };
     CfLock thislock;
-
-    a = GetStorageAttributes(ctx, pp);
 
     CF_OCCUR++;
 
 #ifdef __MINGW32__
-    if (!a.havemount)
+    if (!a->havemount)
     {
         CfOut(OUTPUT_LEVEL_VERBOSE, "", "storage.mount is not supported on Windows");
     }
@@ -101,27 +98,27 @@ void VerifyStoragePromise(EvalContext *ctx, char *path, Promise *pp)
 
 /* No parameter conflicts here */
 
-    if (a.mount.unmount)
+    if (a->mount.unmount)
     {
-        if ((a.mount.mount_source))
+        if ((a->mount.mount_source))
         {
             CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! An unmount promise indicates a mount-source information - probably an error\n");
         }
-        if ((a.mount.mount_server))
+        if ((a->mount.mount_server))
         {
             CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! An unmount promise indicates a mount-server information - probably an error\n");
         }
     }
-    else if (a.havemount)
+    else if (a->havemount)
     {
-        if ((a.mount.mount_source == NULL) || (a.mount.mount_server == NULL))
+        if ((a->mount.mount_source == NULL) || (a->mount.mount_server == NULL))
         {
             CfOut(OUTPUT_LEVEL_ERROR, "", " !! Insufficient specification in mount promise - need source and server\n");
             return;
         }
     }
 
-    thislock = AcquireLock(ctx, path, VUQNAME, CFSTARTTIME, a.transaction, pp, false);
+    thislock = AcquirePromiseLock(path, VUQNAME, CFSTARTTIME, a->transaction, pp, false);
 
     if (thislock.lock == NULL)
     {
@@ -138,24 +135,24 @@ void VerifyStoragePromise(EvalContext *ctx, char *path, Promise *pp)
         return;
     }
 
-    if (a.havemount)
+    if (a->havemount)
     {
-        VerifyMountPromise(ctx, path, a, pp);
+        VerifyMountPromise(path, a, pp);
     }
 #endif /* !__MINGW32__ */
 
 /* Then check file system */
 
-    if (a.havevolume)
+    if (a->havevolume)
     {
-        VerifyFileSystem(ctx, path, a, pp);
+        VerifyFileSystem(path, a, pp);
 
-        if (a.volume.freespace != CF_NOINT)
+        if (a->volume.freespace != CF_NOINT)
         {
-            VerifyFreeSpace(ctx, path, a, pp);
+            VerifyFreeSpace(path, a, pp);
         }
 
-        if (a.volume.scan_arrivals)
+        if (a->volume.scan_arrivals)
         {
             VolumeScanArrivals(path, a, pp);
         }
@@ -168,7 +165,7 @@ void VerifyStoragePromise(EvalContext *ctx, char *path, Promise *pp)
 /** Level                                                          */
 /*******************************************************************/
 
-static int VerifyFileSystem(EvalContext *ctx, char *name, Attributes a, Promise *pp)
+static int VerifyFileSystem(char *name, Attributes a, Promise *pp)
 {
     struct stat statbuf, localstat;
     Dir *dirh;
@@ -260,7 +257,7 @@ static int VerifyFileSystem(EvalContext *ctx, char *name, Attributes a, Promise 
 
 /*******************************************************************/
 
-static int VerifyFreeSpace(EvalContext *ctx, char *file, Attributes a, Promise *pp)
+static int VerifyFreeSpace(char *file, Attributes a, Promise *pp)
 {
     struct stat statbuf;
 
@@ -433,7 +430,7 @@ static int IsForeignFileSystem(struct stat *childstat, char *dir)
     return (false);
 }
 
-static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promise *pp)
+static int VerifyMountPromise(char *name, Attributes a, Promise *pp)
 {
     char *options;
     char dir[CF_BUFSIZE];

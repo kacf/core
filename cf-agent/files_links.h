@@ -28,12 +28,12 @@
 
 #include "cf3.defs.h"
 
-PromiseResult VerifyLink(EvalContext *ctx, char *destination, const char *source, Attributes attr, Promise *pp);
-PromiseResult VerifyAbsoluteLink(EvalContext *ctx, char *destination, const char *source, Attributes attr, Promise *pp);
-PromiseResult VerifyRelativeLink(EvalContext *ctx, char *destination, const char *source, Attributes attr, Promise *pp);
-PromiseResult VerifyHardLink(EvalContext *ctx, char *destination, const char *source, Attributes attr, Promise *pp);
-int KillGhostLink(EvalContext *ctx, const char *name, Attributes attr, const Promise *pp);
-int MakeHardLink(EvalContext *ctx, const char *from, const char *to, Attributes attr, const Promise *pp);
+PromiseResult VerifyLink(EvalContext *ctx, char *destination, const char *source, const Attributes *attr, Promise *pp);
+PromiseResult VerifyAbsoluteLink(EvalContext *ctx, char *destination, const char *source, const Attributes *attr, Promise *pp);
+PromiseResult VerifyRelativeLink(EvalContext *ctx, char *destination, const char *source, const Attributes *attr, Promise *pp);
+PromiseResult VerifyHardLink(EvalContext *ctx, char *destination, const char *source, const Attributes *attr, Promise *pp);
+PromiseResult KillGhostLink(const PromiseContext *pc, const char *name, const Attributes *attr, const Promise *pp);
+int MakeHardLink(EvalContext *ctx, const char *from, const char *to, const Attributes *attr, const Promise *pp);
 int ExpandLinks(char *dest, const char *from, int level);
 
 #endif

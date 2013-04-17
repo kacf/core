@@ -487,6 +487,7 @@ typedef struct Policy_ Policy;
 typedef struct Bundle_ Bundle;
 typedef struct Body_ Body;
 typedef struct Promise_ Promise;
+typedef struct PromiseContext_ PromiseContext;
 typedef struct PromiseType_ PromiseType;
 typedef struct FnCall_ FnCall;
 

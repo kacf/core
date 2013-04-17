@@ -80,6 +80,21 @@ static SyntaxTypeMatch ConstraintCheckType(const Constraint *cp);
 static bool PromiseCheck(const Promise *pp, Seq *errors);
 
 
+void FillPromiseContext(PromiseContext *pc, const EvalContext *ctx)
+{
+        Rval retval;
+        char *v;
+        if (EvalContextVariableControlCommonGet(ctx, COMMON_CONTROL_VERSION, &retval))
+        {
+            v = (char *) retval.item;
+        }
+        else
+        {
+            v = "not specified";
+        }
+        pc->version = v;
+}
+
 const char *NamespaceDefault(void)
 {
     return "default";
