@@ -6,7 +6,6 @@ AM_CPPFLAGS = @CPPFLAGS@ -I$(srcdir)/../libpromises -I$(srcdir)/../libutils \
 	$(LIBVIRT_CPPFLAGS) \
 	$(POSTGRESQL_CPPFLAGS) \
 	$(MYSQL_CPPFLAGS) \
-	$(LIBACL_CPPFLAGS) \
 	$(LIBXML2_CPPFLAGS)
 
 if HAVE_NOVA
@@ -18,14 +17,12 @@ AM_CFLAGS = @CFLAGS@ \
 	$(LIBVIRT_CFLAGS) \
 	$(POSTGRESQL_CFLAGS) \
 	$(MYSQL_CFLAGS) \
-	$(LIBACL_CFLAGS) \
 	$(LIBXML2_CFLAGS)
 
 AM_LDFLAGS = \
 	$(LIBVIRT_LDFLAGS) \
 	$(POSTGRESQL_LDFLAGS) \
 	$(MYSQL_LDFLAGS) \
-	$(LIBACL_LDFLAGS) \
 	$(LIBXML2_LDFLAGS)
 
 if HAVE_AVAHI_COMMON
@@ -38,7 +35,6 @@ LDADD = ../libpromises/libpromises.la \
 	$(LIBVIRT_LIBS) \
 	$(POSTGRESQL_LIBS) \
 	$(MYSQL_LIBS) \
-	$(LIBACL_LIBS) \
 	$(LIBXML2_LIBS)
 if HAVE_NOVA
 LDADD += ../nova/libcfagent/libcfagent.la

@@ -22,6 +22,8 @@
   included file COSL.txt.
 */
 
+#include "platform.h"
+
 #include "files_copy.h"
 
 #include "files_names.h"
@@ -109,13 +111,15 @@ static bool CopyData(const char *source, int sd, const char *destination, int dd
 
 bool CopyRegularFileDisk(const char *source, const char *destination)
 {
-    int sd, dd;
+    int sd;
+    int dd = 0;
+    char *buf = 0;
+    bool result = false;
 
     if ((sd = open(source, O_RDONLY | O_BINARY)) == -1)
     {
         Log(LOG_LEVEL_INFO, "Can't copy '%s'. (open: %s)", source, GetErrorStr());
-        unlink(destination);
-        return false;
+        goto end;
     }
     /*
      * We need to stat the file in order to get the right source permissions.
@@ -125,32 +129,98 @@ bool CopyRegularFileDisk(const char *source, const char *destination)
     if (stat(source, &statbuf) == -1)
     {
         Log(LOG_LEVEL_INFO, "Can't copy '%s'. (stat: %s)", source, GetErrorStr());
-        unlink(destination);
-        return false;
+        goto end;
     }
+
+#ifdef WITH_SELINUX
+    security_context_t old_con = 0;
+    security_context_t new_con = 0;
+    bool fscon_set = false;
+    if (getfscreatecon(&old_con) != 0)
+    {
+        if (errno != ENOTSUP)
+        {
+            Log(LOG_LEVEL_ERR, "Could not get file creation security context. (getfscreatecon: %s)", GetErrorStr());
+            goto end;
+        }
+    }
+    else
+    {
+        if (getfilecon(source, &new_con) != 0)
+        {
+            if (errno != ENOTSUP && errno != ENODATA)
+            {
+                Log(LOG_LEVEL_ERR, "Could not get security context. (getfilecon: %s)", GetErrorStr());
+                goto end;
+            }
+        }
+        if (new_con)
+        {
+            if (setfscreatecon(new_con) != 0)
+            {
+                if (errno != ENOTSUP)
+                {
+                    Log(LOG_LEVEL_ERR, "Could not set file creation security context. (setfscreatecon: %s)", GetErrorStr());
+                    goto end;
+                }
+            }
+            fscon_set = true;
+        }
+    }
+#endif
 
     unlink(destination);                /* To avoid link attacks */
 
     if ((dd = open(destination, O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_BINARY, statbuf.st_mode)) == -1)
     {
         Log(LOG_LEVEL_INFO, "Unable to open destination file while copying '%s' to '%s'. (open: %s)", source, destination, GetErrorStr());
-        close(sd);
-        unlink(destination);
-        return false;
+        goto end;
     }
 
     int buf_size = ST_BLKSIZE(dstat);
-    char *buf = xmalloc(buf_size);
+    buf = xmalloc(buf_size);
 
-    bool result = CopyData(source, sd, destination, dd, buf, buf_size);
+    result = CopyData(source, sd, destination, dd, buf, buf_size);
+    if (!result)
+    {
+        unlink(destination);
+        goto end;
+    }
 
+    result = CopyACLs(source, destination);
+
+end:
+#ifdef WITH_SELINUX
+    if (fscon_set)
+    {
+        if (setfscreatecon(old_con) != 0)
+        {
+            Log(LOG_LEVEL_ERR, "Failed to set file creation security context back to default. (setfscreatecon: %s)", GetErrorStr());
+            // Nothing we can do about it.
+        }
+    }
+    if (new_con)
+    {
+        freecon(new_con);
+    }
+    if (old_con)
+    {
+        freecon(old_con);
+    }
+#endif
+
+    if (buf)
+    {
+        free(buf);
+    }
+    if (dd)
+    {
+        close(dd);
+    }
     if (!result)
     {
         unlink(destination);
     }
-
     close(sd);
-    close(dd);
-    free(buf);
     return result;
 }
