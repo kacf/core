@@ -33,6 +33,7 @@
 #include <verify_methods.h>
 #include <verify_processes.h>
 #include <verify_packages.h>
+#include <verify_users.h>
 #include <verify_services.h>
 #include <verify_storage.h>
 #include <verify_files.h>
@@ -1456,6 +1457,13 @@ static void KeepAgentPromise(EvalContext *ctx, Promise *pp, ARG_UNUSED void *par
     if (strcmp("packages", pp->parent_promise_type->name) == 0)
     {
         VerifyPackagesPromise(ctx, pp);
+        EndMeasurePromise(ctx, start, pp);
+        return;
+    }
+
+    if (strcmp("users", pp->parent_promise_type->name) == 0)
+    {
+        VerifyUsersPromise(ctx, pp);
         EndMeasurePromise(ctx, start, pp);
         return;
     }

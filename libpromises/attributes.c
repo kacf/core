@@ -174,6 +174,18 @@ Attributes GetPackageAttributes(const EvalContext *ctx, const Promise *pp)
 
 /*******************************************************************/
 
+Attributes GetUserAttributes(const EvalContext *ctx, const Promise *pp)
+{
+    Attributes attr = { {0} };
+
+    attr.transaction = GetTransactionConstraints(ctx, pp);
+    attr.classes = GetClassDefinitionConstraints(ctx, pp);
+    attr.users = GetUserConstraints(ctx, pp);
+    return attr;
+}
+
+/*******************************************************************/
+
 Attributes GetDatabaseAttributes(const EvalContext *ctx, const Promise *pp)
 {
     Attributes attr = { {0} };
@@ -1663,4 +1675,37 @@ Database GetDatabaseConstraints(const EvalContext *ctx, const Promise *pp)
     }
 
     return d;
+}
+/*******************************************************************/
+
+User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
+{
+    User u;
+    char *value;
+
+    value = ConstraintGetRvalValue(ctx, "state", pp, RVAL_TYPE_SCALAR);
+    u.state = UserStateFromString(value);
+
+    u.uid = ConstraintGetRvalValue(ctx, "uid", pp, RVAL_TYPE_SCALAR);
+
+    u.user = ConstraintGetRvalValue(ctx, "user", pp, RVAL_TYPE_SCALAR);
+    u.password = ConstraintGetRvalValue(ctx, "password", pp, RVAL_TYPE_SCALAR);
+    u.comment = ConstraintGetRvalValue(ctx, "comment", pp, RVAL_TYPE_SCALAR);
+
+    u.create_home = PromiseGetConstraintAsBoolean(ctx, "create_home", pp);
+
+    u.group = ConstraintGetRvalValue(ctx, "group", pp, RVAL_TYPE_SCALAR);
+    u.groups = PromiseGetConstraintAsList(ctx, "groups", pp);
+    u.home = ConstraintGetRvalValue(ctx, "home", pp, RVAL_TYPE_SCALAR);
+    u.shell = ConstraintGetRvalValue(ctx, "shell", pp, RVAL_TYPE_SCALAR);
+
+    u.remove = PromiseGetConstraintAsBoolean(ctx, "remove", pp);
+
+    if (value && ((u.state) == USER_STATE_NONE))
+    {
+        Log(LOG_LEVEL_ERR, "Unsupported user state '%s' in users promise", value);
+        PromiseRef(LOG_LEVEL_ERR, pp);
+    }
+
+    return u;
 }
