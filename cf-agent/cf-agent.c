@@ -134,6 +134,7 @@ static const char *AGENT_TYPESEQUENCE[] =
     "commands",
     "storage",
     "databases",
+    "users",
     "reports",
     NULL
 };
