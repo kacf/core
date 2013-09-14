@@ -30,11 +30,12 @@ static const ConstraintSyntax users_constraints[] =
 {
     ConstraintSyntaxNewOption("state", "present,absent,locked", "The promised state of a given user", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("user", "", "User name", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewString("uid", "", "User id", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("password", "", "User password", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("comment", "", "User comment", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewBool("create_home", "If true, create home directory for new users", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("group", "", "User primary group", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewStringList("groups", ".*,.*", "User additional groups", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewStringList("groups", ".*", "User additional groups", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("home", "", "User home directory", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("shell", "", "User shell", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewBool("remove", "If true, remove ???", SYNTAX_STATUS_NORMAL),
