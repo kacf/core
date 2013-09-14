@@ -82,6 +82,10 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
 
     /*Do things*/
     //cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_FAIL, pp, a, "KO");
+    printf("pp->promiser=[%s]\n", pp->promiser);
+    printf("a ->state   =[%d]\n", a.users.state);
+    printf("a ->uid     =[%s]\n", a.users.uid);
+    printf("a ->group     =[%s]\n", a.users.group);
     cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_NOOP, pp, a, "NOOP");
     //cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_CHANGE, pp, a, "KO");
 
