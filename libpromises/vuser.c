@@ -218,13 +218,13 @@ int main()
 }
 #endif
 
-int VerifyIfUserNeedsModifs(User u, char (*binfo)[1024], 
+int VerifyIfUserNeedsModifs(char *puser, User u, char (*binfo)[1024], 
                              char (*pinfo)[1024], char (*ginfo)[1024],
                              unsigned long int *changemap)
 {
     bool res;
-    res = FetchUserBasicInfo (u.user, binfo);
-    res = FetchUserPasswdInfo(u.user, pinfo);
+    res = FetchUserBasicInfo (puser, binfo);
+    res = FetchUserPasswdInfo(puser, pinfo);
     printf("binfo[3rd]='%s'\n", binfo[3]);
     printf("pinfo[1st]='%s'\n", pinfo[1]);
     res = FetchUserGroupInfo (binfo[3]/*4th*/, ginfo);
@@ -270,7 +270,7 @@ int VerifyIfUserNeedsModifs(User u, char (*binfo)[1024],
     return 0;
 }
 
-int DoCreateUser(User u)
+int DoCreateUser(char *puser, User u)
 {
     char cmd[4096];
 
@@ -320,16 +320,16 @@ int DoCreateUser(User u)
         sprintf(cmd, "%s -s \"%s\"", cmd, u.shell);
     }
     bool remove;
-    if (strcmp(u.user, ""))
+    if (strcmp(puser, ""))
     {
-        sprintf(cmd, "%s %s", cmd, u.user);
+        sprintf(cmd, "%s %s", cmd, puser);
     }
 
     printf("cmd=[%s]\n", cmd);
     return 0;
 }
 
-int DoRemoveUser(User u)
+int DoRemoveUser(char *puser, User u)
 {
     char cmd[4096];
 
@@ -340,15 +340,15 @@ int DoRemoveUser(User u)
         //TODO: needs force to delete home for sure
         sprintf(cmd, "%s -r", cmd);
     }
-    if (strcmp(u.user, ""))
+    if (strcmp(puser, ""))
     {
-        sprintf(cmd, "%s %s", cmd, u.user);
+        sprintf(cmd, "%s %s", cmd, puser);
     }
 
     return 0;
 }
 
-int DoModifyUser(User u, unsigned long changemap)
+int DoModifyUser(char *puser, User u, unsigned long changemap)
 {
     char cmd[4096];
 
@@ -408,13 +408,13 @@ int DoModifyUser(User u, unsigned long changemap)
     }
 #endif
 
-    sprintf(cmd, "%s %s", cmd, u.user);
+    sprintf(cmd, "%s %s", cmd, puser);
 
     printf("cmd=[%s]\n", cmd);
     return 0;
 }
 
-void VerifyOneUsersPromise(User u, int *result)
+void VerifyOneUsersPromise(char *puser, User u, int *result)
 {
     int res;
 
@@ -424,13 +424,13 @@ void VerifyOneUsersPromise(User u, int *result)
 
     if (u.state == USER_STATE_PRESENT)
     {
-        if (VerifyIfUserExists(u.user) == true)
+        if (VerifyIfUserExists(puser) == true)
         {
             unsigned long int cmap = 0;
-            if (VerifyIfUserNeedsModifs(u, binfo, pinfo, ginfo, &cmap) == 0)
+            if (VerifyIfUserNeedsModifs(puser, u, binfo, pinfo, ginfo, &cmap) == 0)
             {
                 printf("should act on cmap=%u\n", cmap);
-                res = DoModifyUser(u, cmap);
+                res = DoModifyUser(puser, u, cmap);
                 if (!res)
                 {
                     result = CFUSR_REPAIRED;
@@ -447,7 +447,7 @@ void VerifyOneUsersPromise(User u, int *result)
         }
         else
         {
-            res = DoCreateUser(u);
+            res = DoCreateUser(puser, u);
             if (!res)
             {
                 result = CFUSR_REPAIRED;
@@ -460,9 +460,9 @@ void VerifyOneUsersPromise(User u, int *result)
     }
     else if (u.state == USER_STATE_ABSENT)
     {
-        if (VerifyIfUserExists(u.user) == true)
+        if (VerifyIfUserExists(puser) == true)
         {
-            res = DoRemoveUser(u);
+            res = DoRemoveUser(puser, u);
             if (!res)
             {
                 result = CFUSR_REPAIRED;
@@ -487,7 +487,7 @@ int main()
     u.uid = NULL;
     u.create_home = true;
     //u.user = strdup("nhari");
-    u.user = strdup("vagrant");
+    //u.user = strdup("vagrant");
     u.password = strdup("v344t");
     u.comment = strdup("Pierre Nhari");
     u.group = strdup("myg");
@@ -497,7 +497,7 @@ int main()
     u.remove = false;
 
     int result;
-    VerifyOneUsersPromise(u, &result);
+    VerifyOneUsersPromise("vagrant", u, &result);
     //DoCreateUser(u);
     return 0;
 }

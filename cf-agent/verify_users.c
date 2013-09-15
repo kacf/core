@@ -94,8 +94,25 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
     printf("a ->state   =[%d]\n", a.users.state);
     printf("a ->uid     =[%s]\n", a.users.uid);
     printf("a ->group     =[%s]\n", a.users.group);
-    cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_NOOP, pp, a, "NOOP");
-    //cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_CHANGE, pp, a, "KO");
+
+    int result;
+    VerifyOneUsersPromise(pp->promiser, a.users, &result);
+
+    switch (result) {
+         case CFUSR_KEPT:
+             cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_NOOP, pp, a, "NOOP");
+             break;
+         case CFUSR_NOTKEPT:
+             //cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_INTERRUPTED, pp, a, "KO");
+             cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_FAIL, pp, a, "KO");
+             break;
+         case CFUSR_REPAIRED:
+             cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_CHANGE, pp, a, "OK");
+             break;
+         default:
+             printf("Problem: result is unknwon\n");
+    }
+ 
 
     YieldCurrentLock(thislock);
 }
