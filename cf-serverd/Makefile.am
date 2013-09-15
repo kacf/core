@@ -7,6 +7,7 @@ AM_CPPFLAGS = @CPPFLAGS@ -I$(srcdir)/../libpromises -I$(srcdir)/../libutils \
 AM_CFLAGS = @CFLAGS@ \
 	$(ENTERPRISE_CFLAGS)
 
+AM_LDFLAGS = -lcrypt
 libcf_serverd_la_LIBADD = ../libpromises/libpromises.la
 
 libcf_serverd_la_SOURCES = \
