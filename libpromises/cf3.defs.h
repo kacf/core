@@ -1518,6 +1518,7 @@ typedef struct
     bool create_home;
     char *group;
     Rlist *groups;
+    char *groups2;
     char *home;
     char *shell;
     bool remove;

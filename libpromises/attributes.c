@@ -1696,6 +1696,7 @@ User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
 
     u.group = ConstraintGetRvalValue(ctx, "group", pp, RVAL_TYPE_SCALAR);
     u.groups = PromiseGetConstraintAsList(ctx, "groups", pp);
+    u.groups2 = ConstraintGetRvalValue(ctx, "groups2", pp, RVAL_TYPE_SCALAR);
     u.home = ConstraintGetRvalValue(ctx, "home", pp, RVAL_TYPE_SCALAR);
     u.shell = ConstraintGetRvalValue(ctx, "shell", pp, RVAL_TYPE_SCALAR);
 
