@@ -67,17 +67,20 @@ bool VerifyIfUserExists(char *user)
     fp = fopen("/etc/passwd", "r");
     if (fp == NULL)
     {
-
+        printf("cannot open file /etc/passwd\n");
+        return false;
     }
-    while (fgets(line, 2048, fp) == NULL)
+    while (fgets(line, 2048, fp) != NULL)
     {
-        if (strcmp(line,user)==0)
+        if (strncmp(line, user, strlen(user))==0
+            && line[strlen(user)] == ':')
         {
-
+           fclose(fp);
+           return true; 
         }
     }
     fclose(fp);
-    return true;
+    return false;
 }
 
 bool ReadSimpleFile(char *fname, const char *user,
