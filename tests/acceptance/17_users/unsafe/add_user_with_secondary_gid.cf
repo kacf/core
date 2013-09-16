@@ -1,6 +1,6 @@
 #######################################################
 #
-# Test adding a user with a specific uid.
+# Test adding a user with a secondary gid.
 #
 #######################################################
 
@@ -12,6 +12,12 @@ body common control
 
 #######################################################
 
+body perms init_perms_body
+{
+  groups => { "2" };
+  mode => "664";
+}
+
 bundle agent init
 {
   # Remove him first, should he already be present.
@@ -21,14 +27,16 @@ bundle agent init
 
   files:
     "$(G.testfile)"
-      delete => "true";
+      create => "true",
+      perms => init_perms_body;
 }
 
 #######################################################
 
-body perms test_perms_body
+body contain test_contain_body
 {
-  owners => { "johndoe" };
+  useshell => "useshell";
+  exec_owner => "johndoe";
 }
 
 bundle agent test
@@ -36,32 +44,20 @@ bundle agent test
   users:
     "johndoe"
       policy => "present",
-      uid => "9999";
+      # "2" is "bin" on most systems.
+      gid_secondary => { "2" };
 
-  files:
-    "$(G.testfile)"
-      create => "true",
-      perms => test_perms_body;
+  commands:
+    "$(G.echo) Pass > $(G.testfile)"
+      contain => test_contain_body;
 }
 
 #######################################################
 
-body perms check_perms_body
-{
-  owners => { "9999" };
-}
-
-body classes check_classes_body
-{
-  promise_kept => { "ok" };
-}
-
 bundle agent check
 {
-  files:
-    "$(G.testfile)"
-      perms => check_perms_body,
-      classes => check_classes_body;
+  classes:
+    "ok" not => strcmp("0", countlinesmatching("Pass", "$(G.testfile)"));
 
   reports:
     ok::

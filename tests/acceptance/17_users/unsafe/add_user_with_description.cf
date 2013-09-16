@@ -1,6 +1,6 @@
 #######################################################
 #
-# Test adding a user with a specific uid.
+# Test adding a user with a description.
 #
 #######################################################
 
@@ -18,50 +18,27 @@ bundle agent init
   users:
     "johndoe"
       policy => "absent";
-
-  files:
-    "$(G.testfile)"
-      delete => "true";
 }
 
 #######################################################
-
-body perms test_perms_body
-{
-  owners => { "johndoe" };
-}
 
 bundle agent test
 {
+  vars:
+    "desc_string" string => "This description should make the CFEngine test pass";
+
   users:
     "johndoe"
       policy => "present",
-      uid => "9999";
-
-  files:
-    "$(G.testfile)"
-      create => "true",
-      perms => test_perms_body;
+      description => "$(desc_string)";
 }
 
 #######################################################
 
-body perms check_perms_body
-{
-  owners => { "9999" };
-}
-
-body classes check_classes_body
-{
-  promise_kept => { "ok" };
-}
-
 bundle agent check
 {
-  files:
-    "$(G.testfile)"
-      perms => check_perms_body,
-      classes => check_classes_body;
+  classes:
+    "ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:[^:]*:[^:]*:$(test.desc_string):.*", "/etc/passwd"));
 
   reports:
     ok::

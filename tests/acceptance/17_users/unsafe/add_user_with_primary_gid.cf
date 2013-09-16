@@ -1,6 +1,6 @@
 #######################################################
 #
-# Test adding a user with a specific uid.
+# Test adding a user with a primary gid.
 #
 #######################################################
 
@@ -26,9 +26,10 @@ bundle agent init
 
 #######################################################
 
-body perms test_perms_body
+body contain test_contain_body
 {
-  owners => { "johndoe" };
+  useshell => "noshell";
+  exec_owner => "johndoe";
 }
 
 bundle agent test
@@ -36,19 +37,19 @@ bundle agent test
   users:
     "johndoe"
       policy => "present",
-      uid => "9999";
+      # "2" should be "bin" on most systems.
+      gid_primary => { "2" };
 
-  files:
-    "$(G.testfile)"
-      create => "true",
-      perms => test_perms_body;
+  commands:
+    "$(G.touch) $(G.testfile)"
+      contain => test_contain_body;
 }
 
 #######################################################
 
 body perms check_perms_body
 {
-  owners => { "9999" };
+  groups => { "2" };
 }
 
 body classes check_classes_body
