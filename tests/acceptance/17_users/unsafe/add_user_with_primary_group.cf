@@ -1,0 +1,67 @@
+#######################################################
+#
+# Test adding a user with a specific uid.
+#
+#######################################################
+
+body common control
+{
+      inputs => { "../../default.cf.sub" };
+      bundlesequence  => { default("$(this.promise_filename)") };
+}
+
+#######################################################
+
+bundle agent init
+{
+  # Remove him first, should he already be present.
+  users:
+    "johndoe"
+      policy => "absent";
+}
+
+#######################################################
+
+body perms test_perms_body
+{
+  groups => { "johndoe" };
+}
+
+bundle agent test
+{
+  users:
+    "johndoe"
+      policy => "present",
+      gid => "9999";
+
+  files:
+    "$(G.testfile)"
+      create => "true",
+      perms => test_perms_body;
+}
+
+#######################################################
+
+body perms check_perms_body
+{
+  groups => { "9999" };
+}
+
+body classes check_classes_body
+{
+  promise_kept => { "ok" };
+}
+
+bundle agent check
+{
+  files:
+    "$(G.testfile)"
+      perms => check_perms_body,
+      classes => check_classes_body;
+
+  reports:
+    ok::
+      "$(this.promise_filename) Pass";
+    !ok::
+      "$(this.promise_filename) FAIL";
+}

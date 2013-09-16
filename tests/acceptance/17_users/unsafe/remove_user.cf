@@ -1,0 +1,43 @@
+#######################################################
+#
+# Test removing a user
+#
+#######################################################
+
+body common control
+{
+      inputs => { "../../default.cf.sub" };
+      bundlesequence  => { default("$(this.promise_filename)") };
+}
+
+#######################################################
+
+bundle agent init
+{
+  users:
+    "johndoe"
+      policy => "present";
+}
+
+#######################################################
+
+bundle agent test
+{
+  users:
+    "johndoe"
+      policy => "absent";
+}
+
+#######################################################
+
+bundle agent check
+{
+  classes:
+      "ok" not => regcmp(".*johndoe.*", execresult("$(G.grep) /etc/passwd ; $(G.grep) /etc/passwd", "useshell"));
+
+  reports:
+    ok::
+      "$(this.promise_filename) Pass";
+    !ok::
+      "$(this.promise_filename) FAIL";
+}
