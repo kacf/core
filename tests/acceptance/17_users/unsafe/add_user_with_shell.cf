@@ -1,6 +1,6 @@
 #######################################################
 #
-# Test adding a user with a specific uid.
+# Test adding a user with a specific shell.
 #
 #######################################################
 
@@ -18,50 +18,27 @@ bundle agent init
   users:
     "johndoe"
       policy => "absent";
-
-  files:
-    "$(G.testfile)"
-      delete => "true";
 }
 
 #######################################################
-
-body perms test_perms_body
-{
-  owners => { "johndoe" };
-}
 
 bundle agent test
 {
   users:
     "johndoe"
       policy => "present",
-      uid => "9999";
-
-  files:
-    "$(G.testfile)"
-      create => "true",
-      perms => test_perms_body;
+      shell => "$(G.cat)";
 }
 
 #######################################################
 
-body perms check_perms_body
-{
-  owners => { "9999" };
-}
-
-body classes check_classes_body
-{
-  promise_kept => { "ok" };
-}
-
 bundle agent check
 {
-  files:
-    "$(G.testfile)"
-      perms => check_perms_body,
-      classes => check_classes_body;
+  vars:
+    "currentdir" string => dirname("$(this.promise_filename)");
+
+  classes:
+    "ok" expression => strcmp("Succeeded", execresult("sudo su johndoe $currentdir$(G.DS)text.txt"));
 
   reports:
     ok::
