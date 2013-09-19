@@ -1517,6 +1517,14 @@ typedef enum
     PASSWORD_FORMAT_NONE
 } PasswordFormat;
 
+typedef enum
+{
+    PRIVILEGE_WINDOWS_NONE,
+    PRIVILEGE_WINDOWS_USER,
+    PRIVILEGE_WINDOWS_ADMIN,
+    PRIVILEGE_WINDOWS_GUEST
+} PrivilegeWindows;
+
 typedef struct
 {
     UserState policy;
@@ -1529,6 +1537,7 @@ typedef struct
     Rlist *groups_secondary;
     char *home_dir;
     char *shell;
+    PrivilegeWindows privilege_windows;
 } User;
 
 /*************************************************************************/
