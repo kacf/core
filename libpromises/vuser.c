@@ -281,7 +281,7 @@ int VerifyIfUserNeedsModifs(char *puser, User u, char (*binfo)[1024],
        //TODO #2: parse groups and compare with /etc/groups
        char gbuf[100];
        int res;
-       res = groupname2id(binfo[6], gbuf);
+       res = GroupConvert(binfo[6], gbuf);
 
        if(u.group != NULL && 
           (strcmp(u.group, binfo[6]) && strcmp(u.group, gbuf) ))
@@ -290,11 +290,11 @@ int VerifyIfUserNeedsModifs(char *puser, User u, char (*binfo)[1024],
            printf("bit %d changed\n", i_group);
        }
        char glist[100][1024] = {0};
-       int num = get_group_membership(puser, glist);
+       int num = GroupGetUserMembership(puser, glist);
        printf("The big %s versus %d[%s,%s] other groups\n", u.groups2, num, glist[0], glist[1]);
 
        /*TODO: fix differs fct*/
-       if(u.groups2 != NULL && do_groups_equal(u.groups2, glist, num) == 0)
+       if(u.groups2 != NULL && AreListsOfGroupsEqual(u.groups2, glist, num) == 0)
        {
            CFUSR_SETBIT(*changemap, i_groups);
            printf("bit %d changed\n", i_groups);

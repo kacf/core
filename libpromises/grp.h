@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-int groupname2id(char *igroup, char *ogroup);
-int do_groups_equal(char *groups1, char (*groups2)[1024], int num);
-int get_group_membership(char *user, char (*result)[1024]);
+int GroupConvert(char *igroup, char *ogroup);
+int AreListsOfGroupsEqual(char *groups1, char (*groups2)[1024], int num);
+int GroupGetUserMembership(char *user, char (*result)[1024]);
 
 #endif
