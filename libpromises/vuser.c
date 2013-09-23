@@ -389,6 +389,7 @@ int DoCreateUser (char *puser, User u)
     }
 
     printf ("cmd=[%s]\n", cmd);
+    system(cmd);
     return 0;
 }
 
@@ -408,6 +409,7 @@ int DoRemoveUser (char *puser, User u)
         sprintf (cmd, "%s %s", cmd, puser);
     }
 
+    system(cmd);
     return 0;
 }
 
@@ -482,6 +484,7 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
     sprintf (cmd, "%s %s", cmd, puser);
 
     printf ("cmd=[%s]\n", cmd);
+    system(cmd);
     return 0;
 }
 
