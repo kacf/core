@@ -90,10 +90,12 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
 
     /*Do things*/
     //cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_FAIL, pp, a, "KO");
+#if 0
     printf("pp->promiser=[%s]\n", pp->promiser);
     printf("a ->policy   =[%d]\n", a.users.policy);
     printf("a ->uid     =[%s]\n", a.users.uid);
-    printf("a ->group     =[%s]\n", a.users.group);
+    printf("a ->group_primary =[%s]\n", a.users.group_primary);
+#endif
 
     int result;
     VerifyOneUsersPromise(pp->promiser, a.users, &result);

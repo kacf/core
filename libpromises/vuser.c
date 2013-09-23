@@ -33,7 +33,7 @@ typedef struct
     char *user_password;
     char *description;
     bool create_home;
-    char *group;
+    char *group_primary;
     char *groups2_secondary;
     char *home_dir;
     char *shell;
@@ -290,8 +290,8 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
         int res;
         res = GroupConvert (binfo[6], gbuf);
 
-        if (u.group != NULL &&
-            (strcmp (u.group, binfo[6]) && strcmp (u.group, gbuf)))
+        if (u.group_primary != NULL &&
+            (strcmp (u.group_primary, binfo[6]) && strcmp (u.group_primary, gbuf)))
         {
             CFUSR_SETBIT (*changemap, i_group);
             printf ("bit %d changed\n", i_group);
@@ -363,10 +363,10 @@ int DoCreateUser (char *puser, User u)
     {
         sprintf (cmd, "%s -m", cmd);
     }
-    if (u.group != NULL && strcmp (u.group, ""))
+    if (u.group_primary != NULL && strcmp (u.group_primary, ""))
     {
         //TODO: check that group exists
-        sprintf (cmd, "%s -g \"%s\"", cmd, u.group);
+        sprintf (cmd, "%s -g \"%s\"", cmd, u.group_primary);
     }
     if (u.groups2_secondary != NULL && strcmp (u.groups2_secondary, ""))
     {
@@ -451,7 +451,7 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
     if (CFUSR_CHECKBIT (changemap, i_group) != 0)
     {
         //4th
-        sprintf (cmd, "%s -g \"%s\"", cmd, u.group);
+        sprintf (cmd, "%s -g \"%s\"", cmd, u.group_primary);
     }
 
     if (CFUSR_CHECKBIT (changemap, i_groups) != 0)
@@ -556,12 +556,12 @@ int test01 ()
     User u0 = { 0 };
     u0.policy = USER_STATE_PRESENT;
     u0.user_password = strdup ("v344t");
-    u0.group = strdup ("xorg13");
+    u0.group_primary = strdup ("xorg13");
     u0.groups2_secondary = strdup ("xorg11,xorg10");
 
     User u1 = { 0 };
     u1.policy = USER_STATE_PRESENT;
-    u1.group = strdup ("xorg12");
+    u1.group_primary = strdup ("xorg12");
     u1.groups2_secondary = strdup ("xorg11,xorg13");
 
     User u2 = { 0 };
@@ -593,7 +593,7 @@ int main ()
     //u.user = strdup("vagrant");
     u.user_password = strdup ("v344t");
     u.description = strdup ("Pierre Nhari");
-    u.group = strdup ("myg");
+    u.group_primary = strdup ("myg");
     u.groups2_secondary = strdup ("myg1,myg2,myg3");
     u.home_dir = strdup ("/home/nhyet");
     u.shell = strdup ("/bin/sh");

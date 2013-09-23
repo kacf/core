@@ -1694,7 +1694,7 @@ User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
 
     u.create_home = PromiseGetConstraintAsBoolean(ctx, "create_home", pp);
 
-    u.group = ConstraintGetRvalValue(ctx, "group", pp, RVAL_TYPE_SCALAR);
+    u.group_primary = ConstraintGetRvalValue(ctx, "group_primary", pp, RVAL_TYPE_SCALAR);
     u.groups_secondary = PromiseGetConstraintAsList(ctx, "groups_secondary", pp);
     u.groups2_secondary = ConstraintGetRvalValue(ctx, "groups2_secondary", pp, RVAL_TYPE_SCALAR);
     u.home_dir = ConstraintGetRvalValue(ctx, "home_dir", pp, RVAL_TYPE_SCALAR);

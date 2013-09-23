@@ -1516,7 +1516,7 @@ typedef struct
     char *user_password;
     char *description;
     bool create_home;
-    char *group;
+    char *group_primary;
     Rlist *groups_secondary;
     char *groups2_secondary;
     char *home_dir;
