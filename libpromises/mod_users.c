@@ -37,7 +37,7 @@ static const ConstraintSyntax users_constraints[] =
     ConstraintSyntaxNewString("group", "", "User primary group", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewStringList("groups", ".*", "User additional groups", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("groups2", "", "Duplicated (just in order to test standalone code)", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("home", "", "User home directory", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewString("home_dir", "", "User home directory", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("shell", "", "User shell", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewBool("remove", "If true, remove ???", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewNull()

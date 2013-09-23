@@ -1519,7 +1519,7 @@ typedef struct
     char *group;
     Rlist *groups;
     char *groups2;
-    char *home;
+    char *home_dir;
     char *shell;
     bool remove;
 } User;

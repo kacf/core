@@ -35,7 +35,7 @@ typedef struct
     bool create_home;
     char *group;
     char *groups2;
-    char *home;
+    char *home_dir;
     char *shell;
     bool remove;
 } User;
@@ -251,7 +251,7 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
             CFUSR_SETBIT (*changemap, i_uid);
             printf ("bit %d changed\n", i_uid);
         }
-        if (u.home != NULL && strcmp (u.home, binfo[5]))
+        if (u.home_dir != NULL && strcmp (u.home_dir, binfo[5]))
         {
             CFUSR_SETBIT (*changemap, i_home);
             printf ("bit %d changed\n", i_home);
@@ -373,9 +373,9 @@ int DoCreateUser (char *puser, User u)
         //TODO: check that groups exists
         sprintf (cmd, "%s -G \"%s\"", cmd, u.groups2);
     }
-    if (u.home != NULL && strcmp (u.home, ""))
+    if (u.home_dir != NULL && strcmp (u.home_dir, ""))
     {
-        sprintf (cmd, "%s -d \"%s\"", cmd, u.home);
+        sprintf (cmd, "%s -d \"%s\"", cmd, u.home_dir);
     }
     if (u.shell != NULL && strcmp (u.shell, ""))
     {
@@ -462,7 +462,7 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
 
     if (CFUSR_CHECKBIT (changemap, i_home) != 0)
     {
-        sprintf (cmd, "%s -d \"%s\"", cmd, u.home);
+        sprintf (cmd, "%s -d \"%s\"", cmd, u.home_dir);
     }
 
     if (CFUSR_CHECKBIT (changemap, i_shell) != 0)
@@ -595,7 +595,7 @@ int main ()
     u.comment = strdup ("Pierre Nhari");
     u.group = strdup ("myg");
     u.groups2 = strdup ("myg1,myg2,myg3");
-    u.home = strdup ("/home/nhyet");
+    u.home_dir = strdup ("/home/nhyet");
     u.shell = strdup ("/bin/sh");
     u.remove = false;
 
