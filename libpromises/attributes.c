@@ -1690,7 +1690,7 @@ User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
 
     u.user = ConstraintGetRvalValue(ctx, "user", pp, RVAL_TYPE_SCALAR);
     u.user_password = ConstraintGetRvalValue(ctx, "user_password", pp, RVAL_TYPE_SCALAR);
-    u.comment = ConstraintGetRvalValue(ctx, "comment", pp, RVAL_TYPE_SCALAR);
+    u.description = ConstraintGetRvalValue(ctx, "description", pp, RVAL_TYPE_SCALAR);
 
     u.create_home = PromiseGetConstraintAsBoolean(ctx, "create_home", pp);
 

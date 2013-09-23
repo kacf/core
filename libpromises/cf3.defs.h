@@ -1514,7 +1514,7 @@ typedef struct
     char *uid;
     char *user;
     char *user_password;
-    char *comment;
+    char *description;
     bool create_home;
     char *group;
     Rlist *groups;

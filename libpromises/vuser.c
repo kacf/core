@@ -31,7 +31,7 @@ typedef struct
     char *uid;
     char *user;
     char *user_password;
-    char *comment;
+    char *description;
     bool create_home;
     char *group;
     char *groups2;
@@ -241,7 +241,7 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
     if (res == true)
     {
         //name;pass;id;grp;comment;home;shell
-        if (u.comment != NULL && strcmp (u.comment, binfo[4]))
+        if (u.description != NULL && strcmp (u.description, binfo[4]))
         {
             CFUSR_SETBIT (*changemap, i_comment);
             printf ("bit %d changed\n", i_comment);
@@ -354,9 +354,9 @@ int DoCreateUser (char *puser, User u)
         }
     }
 
-    if (u.comment != NULL && strcmp (u.comment, ""))
+    if (u.description != NULL && strcmp (u.description, ""))
     {
-        sprintf (cmd, "%s -c \"%s\"", cmd, u.comment);
+        sprintf (cmd, "%s -c \"%s\"", cmd, u.description);
     }
 
     if (u.create_home == true)
@@ -441,10 +441,10 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
 
     if (CFUSR_CHECKBIT (changemap, i_comment) != 0)
     {
-        if (strcmp (u.comment, ""))
+        if (strcmp (u.description, ""))
         {
             //5th
-            sprintf (cmd, "%s -c \"%s\"", cmd, u.comment);
+            sprintf (cmd, "%s -c \"%s\"", cmd, u.description);
         }
     }
 
@@ -592,7 +592,7 @@ int main ()
     //u.user = strdup("nhari");
     //u.user = strdup("vagrant");
     u.user_password = strdup ("v344t");
-    u.comment = strdup ("Pierre Nhari");
+    u.description = strdup ("Pierre Nhari");
     u.group = strdup ("myg");
     u.groups2 = strdup ("myg1,myg2,myg3");
     u.home_dir = strdup ("/home/nhyet");

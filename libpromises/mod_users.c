@@ -32,7 +32,7 @@ static const ConstraintSyntax users_constraints[] =
     ConstraintSyntaxNewString("user", "", "User name", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("uid", "", "User id", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("user_password", "", "User password", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("comment", "", "User comment", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewString("description", "", "User comment", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewBool("create_home", "If true, create home directory for new users", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("group", "", "User primary group", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewStringList("groups", ".*", "User additional groups", SYNTAX_STATUS_NORMAL),
