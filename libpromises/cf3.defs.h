@@ -1510,7 +1510,7 @@ typedef enum
 
 typedef struct
 {
-    UserState state;
+    UserState policy;
     char *uid;
     char *user;
     char *password;

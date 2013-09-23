@@ -28,7 +28,7 @@
 
 static const ConstraintSyntax users_constraints[] =
 {
-    ConstraintSyntaxNewOption("state", "present,absent,locked", "The promised state of a given user", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewOption("policy", "present,absent,locked", "The promised state of a given user", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("user", "", "User name", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("uid", "", "User id", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("password", "", "User password", SYNTAX_STATUS_NORMAL),

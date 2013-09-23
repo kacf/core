@@ -27,7 +27,7 @@ typedef enum
 
 typedef struct
 {
-    UserState state;
+    UserState policy;
     char *uid;
     char *user;
     char *password;
@@ -492,7 +492,7 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
     char pinfo[7][1024] = { 0 };
     char ginfo[7][1024] = { 0 };
 
-    if (u.state == USER_STATE_PRESENT)
+    if (u.policy == USER_STATE_PRESENT)
     {
         if (VerifyIfUserExists (puser) == true)
         {
@@ -529,7 +529,7 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
             }
         }
     }
-    else if (u.state == USER_STATE_ABSENT)
+    else if (u.policy == USER_STATE_ABSENT)
     {
         if (VerifyIfUserExists (puser) == true)
         {
@@ -554,24 +554,24 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
 int test01 ()
 {
     User u0 = { 0 };
-    u0.state = USER_STATE_PRESENT;
+    u0.policy = USER_STATE_PRESENT;
     u0.password = strdup ("v344t");
     u0.group = strdup ("xorg13");
     u0.groups2 = strdup ("xorg11,xorg10");
 
     User u1 = { 0 };
-    u1.state = USER_STATE_PRESENT;
+    u1.policy = USER_STATE_PRESENT;
     u1.group = strdup ("xorg12");
     u1.groups2 = strdup ("xorg11,xorg13");
 
     User u2 = { 0 };
-    u2.state = USER_STATE_PRESENT;
+    u2.policy = USER_STATE_PRESENT;
     u2.password =
         strdup
         ("$6$gDNrZkGDnUFMV9g$Ud94uWbcMXVfusUR9VMB07eUu53BuMgkboT9nwugpelcEY9PH57Oh.4Zl0bGnjeR.YYB9lQTAuUFBBdfJIhim/");
 
     User u3 = { 0 };
-    u3.state = USER_STATE_PRESENT;
+    u3.policy = USER_STATE_PRESENT;
     u3.password = strdup ("v344t");
 
     int result;
@@ -586,7 +586,7 @@ int main ()
     test01 ();
     exit (0);
     User u = { 0 };
-    u.state = USER_STATE_PRESENT;
+    u.policy = USER_STATE_PRESENT;
     u.uid = NULL;
     u.create_home = true;
     //u.user = strdup("nhari");

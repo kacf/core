@@ -79,7 +79,7 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
 
 // Now verify the package itself
 
-    snprintf(lockname, CF_BUFSIZE - 1, "user-%s-%d", pp->promiser, a.users.state);
+    snprintf(lockname, CF_BUFSIZE - 1, "user-%s-%d", pp->promiser, a.users.policy);
 
     thislock = AcquireLock(ctx, lockname, VUQNAME, CFSTARTTIME, a.transaction, pp, false);
 
@@ -91,7 +91,7 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
     /*Do things*/
     //cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_FAIL, pp, a, "KO");
     printf("pp->promiser=[%s]\n", pp->promiser);
-    printf("a ->state   =[%d]\n", a.users.state);
+    printf("a ->policy   =[%d]\n", a.users.policy);
     printf("a ->uid     =[%s]\n", a.users.uid);
     printf("a ->group     =[%s]\n", a.users.group);
 

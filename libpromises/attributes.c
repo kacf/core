@@ -1683,8 +1683,8 @@ User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
     User u;
     char *value;
 
-    value = ConstraintGetRvalValue(ctx, "state", pp, RVAL_TYPE_SCALAR);
-    u.state = UserStateFromString(value);
+    value = ConstraintGetRvalValue(ctx, "policy", pp, RVAL_TYPE_SCALAR);
+    u.policy = UserStateFromString(value);
 
     u.uid = ConstraintGetRvalValue(ctx, "uid", pp, RVAL_TYPE_SCALAR);
 
@@ -1702,9 +1702,9 @@ User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
 
     u.remove = PromiseGetConstraintAsBoolean(ctx, "remove", pp);
 
-    if (value && ((u.state) == USER_STATE_NONE))
+    if (value && ((u.policy) == USER_STATE_NONE))
     {
-        Log(LOG_LEVEL_ERR, "Unsupported user state '%s' in users promise", value);
+        Log(LOG_LEVEL_ERR, "Unsupported user policy '%s' in users promise", value);
         PromiseRef(LOG_LEVEL_ERR, pp);
     }
 
