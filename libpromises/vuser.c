@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include <pwcrypt.h>
-#include <grp.h>
+#include <users_groups.h>
 
 //#define STANDALONE 1
 

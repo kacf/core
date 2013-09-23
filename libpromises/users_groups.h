@@ -1,5 +1,5 @@
-#ifndef CFENGINE_GRP_H
-#define CFENGINE_GRP_H
+#ifndef CFENGINE_USERS_GROUPS_H
+#define CFENGINE_USERS_GROUPS_H
 
 #include <stdio.h>
 #include <string.h>

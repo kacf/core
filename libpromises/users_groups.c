@@ -1,4 +1,4 @@
-#include <grp.h>
+#include <users_groups.h>
 
 /* convert from group name to group id and vice versa */
 /* will auto-detect gid/name and act accordingly      */
