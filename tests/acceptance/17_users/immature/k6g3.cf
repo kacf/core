@@ -1,0 +1,12 @@
+body common control {
+  bundlesequence => {"test"};
+}
+bundle agent test
+{
+  users:
+    "johndoe4"
+      policy => "present",
+      group_primary => "bin",
+      groups2_secondary => "vagrant,sys,daemon";
+}
+

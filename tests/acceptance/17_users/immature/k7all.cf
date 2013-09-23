@@ -1,0 +1,18 @@
+body common control {
+  bundlesequence => {"test"};
+}
+
+bundle agent test
+{
+  vars:
+    "desc_string" string => "This description should make the CFEngine test pass";
+
+  users:
+    "johndoe5"
+      policy => "present",
+      uid => "9876",
+      group_primary => "2",
+      groups2_secondary => "vagrant,sys,daemon",
+      shell => "/bin/true",
+      description => "$(desc_string)";
+}

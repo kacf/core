@@ -1,0 +1,12 @@
+body common control {
+  bundlesequence => {"test"};
+}
+
+bundle agent test
+{
+  users:
+    "johndoe"
+      policy => "present",
+      shell => "/bin/true";
+}
+
