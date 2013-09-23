@@ -509,16 +509,16 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
                 res = DoModifyUser (puser, u, cmap);
                 if (!res)
                 {
-                    result = CFUSR_REPAIRED;
+                    *result = CFUSR_REPAIRED;
                 }
                 else
                 {
-                    result = CFUSR_NOTKEPT;
+                    *result = CFUSR_NOTKEPT;
                 }
             }
             else
             {
-                result = CFUSR_KEPT;
+                *result = CFUSR_KEPT;
             }
         }
         else
@@ -526,11 +526,11 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
             res = DoCreateUser (puser, u);
             if (!res)
             {
-                result = CFUSR_REPAIRED;
+                *result = CFUSR_REPAIRED;
             }
             else
             {
-                result = CFUSR_NOTKEPT;
+                *result = CFUSR_NOTKEPT;
             }
         }
     }
@@ -541,16 +541,16 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
             res = DoRemoveUser (puser, u);
             if (!res)
             {
-                result = CFUSR_REPAIRED;
+                *result = CFUSR_REPAIRED;
             }
             else
             {
-                result = CFUSR_NOTKEPT;
+                *result = CFUSR_NOTKEPT;
             }
         }
         else
         {
-            result = CFUSR_KEPT;
+            *result = CFUSR_KEPT;
         }
     }
 }
