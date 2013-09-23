@@ -244,7 +244,7 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
         if (u.description != NULL && strcmp (u.description, binfo[4]))
         {
             CFUSR_SETBIT (*changemap, i_comment);
-            printf ("bit %d changed\n", i_comment);
+            printf ("bit comment %d changed\n", i_comment);
         }
         if (u.uid != NULL && (atoi (u.uid) != atoi (binfo[2])))
         {
@@ -298,8 +298,8 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
         }
         Seq *glist = SeqNew(100, free);
         int num = GroupGetUserMembership (puser, glist);
-        printf ("The big %s versus %d[%s,%s] other groups\n", u.groups2_secondary, num,
-                glist[0], glist[1]);
+        //printf ("The big %s versus %d[%s,%s] other groups\n", u.groups2_secondary, num,
+        //        glist[0], glist[1]);
 
         /*TODO: fix differs fct */
         if (u.groups2_secondary != NULL
@@ -409,6 +409,7 @@ int DoRemoveUser (char *puser, User u)
         sprintf (cmd, "%s %s", cmd, puser);
     }
 
+    printf ("cmd=[%s]\n", cmd);
     system(cmd);
     return 0;
 }
