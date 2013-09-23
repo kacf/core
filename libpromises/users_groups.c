@@ -47,9 +47,10 @@ int GroupConvert(char *igroup, char *ogroup)
     return 1;
 }
 
-/************************/
-/* get group membership */
-/************************/
+/*****************************************************/
+/* get group membership                              */
+/* Achtung : primary group is not part of the result */
+/*****************************************************/
 /***
 Seq *groups1 : only names are accepted here
 1 : equal, 0 : differ, <> : error comparing
@@ -69,7 +70,7 @@ int AreListsOfGroupsEqual (char *groups1, Seq *groups2)
         {
             if (!strncmp ((char *)groups2->data[i], s0, s - s0))
             {
-                printf ("compared %s to %s ? YES\n", (char *)groups2->data[i], s0);
+                //printf ("compared %s to %s ? YES\n", (char *)groups2->data[i], s0);
                 found = 1;
             }
         }
@@ -84,7 +85,7 @@ int AreListsOfGroupsEqual (char *groups1, Seq *groups2)
     {
         if (!strcmp ((char *)groups2->data[i], s0))
         {
-            printf ("compared last %s to %s ? YES\n", (char *)groups2->data[i], s0);
+            //printf ("compared last %s to %s ? YES\n", (char *)groups2->data[i], s0);
             found = 1;
         }
     }
@@ -93,14 +94,14 @@ int AreListsOfGroupsEqual (char *groups1, Seq *groups2)
         return 0;
     }
 
-    printf ("cnt=%d\n", cnt);
+    //printf ("cnt=%d\n", cnt);
     if (cnt + 1 == SeqLength(groups2))
     {
         return 1;
     }
     else
     {
-        printf ("group list 1 is subset of group list 2\n");
+        //printf ("group list 1 is subset of group list 2\n");
         return 0;
     }
 }
@@ -125,13 +126,13 @@ int GroupGetUserMembership (char *user, Seq *result)
             {
                 line[len] = '\0';
             }
-            printf ("matched %s\n", 1 + strrchr (line, ':'));
+            //printf ("matched %s\n", 1 + strrchr (line, ':'));
             char *s0 = 1 + strrchr (line, ':');
             char *s = NULL;
             char obuf[1024];
             while ((s = strchr (s0, ',')) != NULL)
             {
-                printf ("\tS0=%s[%u]\n", s0, s - s0);
+                //printf ("\tS0=%s[%u]\n", s0, s - s0);
                 if (!strncmp (s0, user, s - s0))
                 {
                     //strncpy(obuf, s0, s - s0);
@@ -139,18 +140,18 @@ int GroupGetUserMembership (char *user, Seq *result)
                     sscanf (line, "%[^:]:", obuf);
                     SeqAppend(result, strdup(obuf));
                     num++;
-                    printf ("\t\tcool1\n");
+                    //printf ("\t\tcool1\n");
                 }
                 s0 = s + 1;
             }
-            printf ("\tS0=%s[%u]\n", s0, strlen (s0));
+            //printf ("\tS0=%s[%u]\n", s0, strlen (s0));
             if (!strcmp (s0, user))
             {
                 //strcpy(obuf, s0);
                 sscanf (line, "%[^:]:", obuf);
                 SeqAppend(result, strdup(obuf));
                 num++;
-                printf ("\t\tcool2\n");
+                //printf ("\t\tcool2\n");
             }
         }
     }
@@ -159,14 +160,58 @@ int GroupGetUserMembership (char *user, Seq *result)
 }
 
 #if 0
+void test_group_convert()
+{
+    char gbuf[100];
+    int res;
+    res = GroupConvert ("root", gbuf);
+    if(!strcmp(gbuf, "0")) {printf("yes\n");} else {printf("no\n");}
+    res = GroupConvert ("0", gbuf);
+    if(!strcmp(gbuf, "root")) {printf("yes\n");} else {printf("no\n");}
+
+}
+void test_group_membership()
+{
+    Seq *result = SeqNew(100, free);
+    int num = GroupGetUserMembership ("vagrant", result);
+    int i;
+
+    for (i = 0; i < num; i++)
+    {
+        //printf ("res(%d)=%s\n", i, (char *)result->data[i]);
+    }
+    if(SeqLength(result)==4) {printf("yes\n");} else {printf("no\n");} 
+    SeqDestroy(result);
+}
+
+void test_group_compare()
+{
+    Seq *result = SeqNew(100, free);
+    GroupGetUserMembership ("vagrant", result);
+    int res;
+    res = AreListsOfGroupsEqual ("video,cdrom,sudo,audio", result);
+    if(res==1) {printf("yes\n");} else {printf("no\n");}
+    res = AreListsOfGroupsEqual ("video,sudo,audio", result);
+    if(res==0) {printf("yes\n");} else {printf("no\n");}
+    res = AreListsOfGroupsEqual ("video,kudo,sudo,audio,walo", result);
+    if(res==0) {printf("yes\n");} else {printf("no\n");}
+    SeqDestroy(result);
+}
+
 int main ()
 {
+
+    test_group_convert();
+    test_group_membership();
+    test_group_compare();
+    return 0;
+
     char *user = "nhari";
     //char *user = "vagrant";
     Seq *result = SeqNew(100, free);
-
+    printf("Hola\n");
     int num = GroupGetUserMembership (user, result);
-
+    printf("Hola\n");
     int i;
     printf ("N = %d\n", num);
 
