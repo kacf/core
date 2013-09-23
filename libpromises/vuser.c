@@ -34,7 +34,7 @@ typedef struct
     char *description;
     bool create_home;
     char *group;
-    char *groups2;
+    char *groups2_secondary;
     char *home_dir;
     char *shell;
     bool remove;
@@ -298,12 +298,12 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
         }
         char glist[100][1024] = { 0 };
         int num = GroupGetUserMembership (puser, glist);
-        printf ("The big %s versus %d[%s,%s] other groups\n", u.groups2, num,
+        printf ("The big %s versus %d[%s,%s] other groups\n", u.groups2_secondary, num,
                 glist[0], glist[1]);
 
         /*TODO: fix differs fct */
-        if (u.groups2 != NULL
-            && AreListsOfGroupsEqual (u.groups2, glist, num) == 0)
+        if (u.groups2_secondary != NULL
+            && AreListsOfGroupsEqual (u.groups2_secondary, glist, num) == 0)
         {
             CFUSR_SETBIT (*changemap, i_groups);
             printf ("bit %d changed\n", i_groups);
@@ -368,10 +368,10 @@ int DoCreateUser (char *puser, User u)
         //TODO: check that group exists
         sprintf (cmd, "%s -g \"%s\"", cmd, u.group);
     }
-    if (u.groups2 != NULL && strcmp (u.groups2, ""))
+    if (u.groups2_secondary != NULL && strcmp (u.groups2_secondary, ""))
     {
         //TODO: check that groups exists
-        sprintf (cmd, "%s -G \"%s\"", cmd, u.groups2);
+        sprintf (cmd, "%s -G \"%s\"", cmd, u.groups2_secondary);
     }
     if (u.home_dir != NULL && strcmp (u.home_dir, ""))
     {
@@ -457,7 +457,7 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
     if (CFUSR_CHECKBIT (changemap, i_groups) != 0)
     {
         //TODO: check that groups (id forms and name forms) differ (4th in /etc/group)
-        sprintf (cmd, "%s -G \"%s\"", cmd, u.groups2);
+        sprintf (cmd, "%s -G \"%s\"", cmd, u.groups2_secondary);
     }
 
     if (CFUSR_CHECKBIT (changemap, i_home) != 0)
@@ -557,12 +557,12 @@ int test01 ()
     u0.policy = USER_STATE_PRESENT;
     u0.user_password = strdup ("v344t");
     u0.group = strdup ("xorg13");
-    u0.groups2 = strdup ("xorg11,xorg10");
+    u0.groups2_secondary = strdup ("xorg11,xorg10");
 
     User u1 = { 0 };
     u1.policy = USER_STATE_PRESENT;
     u1.group = strdup ("xorg12");
-    u1.groups2 = strdup ("xorg11,xorg13");
+    u1.groups2_secondary = strdup ("xorg11,xorg13");
 
     User u2 = { 0 };
     u2.policy = USER_STATE_PRESENT;
@@ -594,7 +594,7 @@ int main ()
     u.user_password = strdup ("v344t");
     u.description = strdup ("Pierre Nhari");
     u.group = strdup ("myg");
-    u.groups2 = strdup ("myg1,myg2,myg3");
+    u.groups2_secondary = strdup ("myg1,myg2,myg3");
     u.home_dir = strdup ("/home/nhyet");
     u.shell = strdup ("/bin/sh");
     u.remove = false;

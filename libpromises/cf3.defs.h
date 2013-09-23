@@ -1517,8 +1517,8 @@ typedef struct
     char *description;
     bool create_home;
     char *group;
-    Rlist *groups;
-    char *groups2;
+    Rlist *groups_secondary;
+    char *groups2_secondary;
     char *home_dir;
     char *shell;
     bool remove;
