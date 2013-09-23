@@ -30,7 +30,7 @@ typedef struct
     UserState policy;
     char *uid;
     char *user;
-    char *password;
+    char *user_password;
     char *comment;
     bool create_home;
     char *group;
@@ -261,15 +261,15 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
             CFUSR_SETBIT (*changemap, i_shell);
             printf ("bit %d changed\n", i_shell);
         }
-        if (u.password != NULL && strcmp (u.password, ""))
+        if (u.user_password != NULL && strcmp (u.user_password, ""))
         {
-            if (u.password[0] != '$')
+            if (u.user_password[0] != '$')
             {
                 char encrypted[1024];
                 //TODO: fetch "salt" from pinfo[2nd field]
                 char salt[20];
                 getrndsalt ((PwHashMethod) (pinfo[1][1] - '0'), salt);
-                cf_crypt (u.password, salt, &encrypted);
+                cf_crypt (u.user_password, salt, &encrypted);
                 if (strcmp (encrypted, pinfo[1]))
                 {
                     CFUSR_SETBIT (*changemap, i_password);
@@ -278,7 +278,7 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
             }
             else
             {
-                if (strcmp (u.password, pinfo[1]))
+                if (strcmp (u.user_password, pinfo[1]))
                 {
                     CFUSR_SETBIT (*changemap, i_password);
                     printf ("bit %d changed\n", i_password);
@@ -334,23 +334,23 @@ int DoCreateUser (char *puser, User u)
         sprintf (cmd, "%s -u %d", cmd, atoi (u.uid));
     }
 
-    if (u.password != NULL && strcmp (u.password, ""))
+    if (u.user_password != NULL && strcmp (u.user_password, ""))
     {
         ////////////////////////////////////////////
         //TODO: generate random salt              //
         //TODO: might have an algorithm input     //
         ////////////////////////////////////////////
-        if (u.password[0] != '$')
+        if (u.user_password[0] != '$')
         {
             char encrypted[1024];
             char salt[20];
             getrndsalt (sha512, salt);
-            cf_crypt (u.password, salt, &encrypted);
+            cf_crypt (u.user_password, salt, &encrypted);
             sprintf (cmd, "%s -p '%s'", cmd, encrypted);
         }
         else
         {
-            sprintf (cmd, "%s -p '%s'", cmd, u.password);
+            sprintf (cmd, "%s -p '%s'", cmd, u.user_password);
         }
     }
 
@@ -424,18 +424,18 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
 
     if (CFUSR_CHECKBIT (changemap, i_password) != 0)
     {
-        if (u.password[0] != '$')
+        if (u.user_password[0] != '$')
         {
             //Generate with a different salt
             char encrypted[1024];
             char salt[20];
             getrndsalt (sha512, salt);
-            cf_crypt (u.password, salt, &encrypted);
+            cf_crypt (u.user_password, salt, &encrypted);
             sprintf (cmd, "%s -p '%s'", cmd, encrypted);
         }
         else
         {
-            sprintf (cmd, "%s -p '%s'", cmd, u.password);
+            sprintf (cmd, "%s -p '%s'", cmd, u.user_password);
         }
     }
 
@@ -555,7 +555,7 @@ int test01 ()
 {
     User u0 = { 0 };
     u0.policy = USER_STATE_PRESENT;
-    u0.password = strdup ("v344t");
+    u0.user_password = strdup ("v344t");
     u0.group = strdup ("xorg13");
     u0.groups2 = strdup ("xorg11,xorg10");
 
@@ -566,13 +566,13 @@ int test01 ()
 
     User u2 = { 0 };
     u2.policy = USER_STATE_PRESENT;
-    u2.password =
+    u2.user_password =
         strdup
         ("$6$gDNrZkGDnUFMV9g$Ud94uWbcMXVfusUR9VMB07eUu53BuMgkboT9nwugpelcEY9PH57Oh.4Zl0bGnjeR.YYB9lQTAuUFBBdfJIhim/");
 
     User u3 = { 0 };
     u3.policy = USER_STATE_PRESENT;
-    u3.password = strdup ("v344t");
+    u3.user_password = strdup ("v344t");
 
     int result;
     //VerifyOneUsersPromise("xusr13", u0, &result);
@@ -591,7 +591,7 @@ int main ()
     u.create_home = true;
     //u.user = strdup("nhari");
     //u.user = strdup("vagrant");
-    u.password = strdup ("v344t");
+    u.user_password = strdup ("v344t");
     u.comment = strdup ("Pierre Nhari");
     u.group = strdup ("myg");
     u.groups2 = strdup ("myg1,myg2,myg3");

@@ -1513,7 +1513,7 @@ typedef struct
     UserState policy;
     char *uid;
     char *user;
-    char *password;
+    char *user_password;
     char *comment;
     bool create_home;
     char *group;
