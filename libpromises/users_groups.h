@@ -5,9 +5,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <sequence.h>
 
 int GroupConvert(char *igroup, char *ogroup);
-int AreListsOfGroupsEqual(char *groups1, char (*groups2)[1024], int num);
-int GroupGetUserMembership(char *user, char (*result)[1024]);
+int AreListsOfGroupsEqual(char *groups1, Seq *groups2);
+int GroupGetUserMembership(char *user, Seq *result);
 
 #endif

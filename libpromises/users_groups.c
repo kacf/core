@@ -51,10 +51,10 @@ int GroupConvert(char *igroup, char *ogroup)
 /* get group membership */
 /************************/
 /***
-char *groups1 : only names are accepted here
+Seq *groups1 : only names are accepted here
 1 : equal, 0 : differ, <> : error comparing
 ***/
-int AreListsOfGroupsEqual (char *groups1, char (*groups2)[1024], int num)
+int AreListsOfGroupsEqual (char *groups1, Seq *groups2)
 {
     char *s0 = groups1;
     char *s = NULL;
@@ -65,11 +65,11 @@ int AreListsOfGroupsEqual (char *groups1, char (*groups2)[1024], int num)
     while ((s = strchr (s0, ',')) != NULL)
     {
         cnt++;
-        for (i = 0; i < num; i++)
+        for (i = 0; i < SeqLength(groups2); i++)
         {
-            if (!strncmp (groups2[i], s0, s - s0))
+            if (!strncmp ((char *)groups2->data[i], s0, s - s0))
             {
-                printf ("compared %s to %s ? YES\n", groups2[i], s0);
+                printf ("compared %s to %s ? YES\n", (char *)groups2->data[i], s0);
                 found = 1;
             }
         }
@@ -80,11 +80,11 @@ int AreListsOfGroupsEqual (char *groups1, char (*groups2)[1024], int num)
         s0 = s + 1;
     }
     found = 0;
-    for (i = 0; i < num; i++)
+    for (i = 0; i < SeqLength(groups2); i++)
     {
-        if (!strcmp (groups2[i], s0))
+        if (!strcmp ((char *)groups2->data[i], s0))
         {
-            printf ("compared last %s to %s ? YES\n", groups2[i], s0);
+            printf ("compared last %s to %s ? YES\n", (char *)groups2->data[i], s0);
             found = 1;
         }
     }
@@ -94,7 +94,7 @@ int AreListsOfGroupsEqual (char *groups1, char (*groups2)[1024], int num)
     }
 
     printf ("cnt=%d\n", cnt);
-    if (cnt + 1 == num)
+    if (cnt + 1 == SeqLength(groups2))
     {
         return 1;
     }
@@ -105,7 +105,7 @@ int AreListsOfGroupsEqual (char *groups1, char (*groups2)[1024], int num)
     }
 }
 
-int GroupGetUserMembership (char *user, char (*result)[1024])
+int GroupGetUserMembership (char *user, Seq *result)
 {
     int num = 0;
     FILE *fp = fopen ("/etc/group", "r");
@@ -128,14 +128,16 @@ int GroupGetUserMembership (char *user, char (*result)[1024])
             printf ("matched %s\n", 1 + strrchr (line, ':'));
             char *s0 = 1 + strrchr (line, ':');
             char *s = NULL;
+            char obuf[1024];
             while ((s = strchr (s0, ',')) != NULL)
             {
                 printf ("\tS0=%s[%u]\n", s0, s - s0);
                 if (!strncmp (s0, user, s - s0))
                 {
-                    //strncpy(result[num], s0, s - s0);
-                    //result[num][s - s0] = '\0';
-                    sscanf (line, "%[^:]:", result[num]);
+                    //strncpy(obuf, s0, s - s0);
+                    //obuf[s - s0] = '\0';
+                    sscanf (line, "%[^:]:", obuf);
+                    SeqAppend(result, strdup(obuf));
                     num++;
                     printf ("\t\tcool1\n");
                 }
@@ -144,8 +146,9 @@ int GroupGetUserMembership (char *user, char (*result)[1024])
             printf ("\tS0=%s[%u]\n", s0, strlen (s0));
             if (!strcmp (s0, user))
             {
-                //strcpy(result[num], s0);
-                sscanf (line, "%[^:]:", result[num]);
+                //strcpy(obuf, s0);
+                sscanf (line, "%[^:]:", obuf);
+                SeqAppend(result, strdup(obuf));
                 num++;
                 printf ("\t\tcool2\n");
             }
@@ -160,20 +163,25 @@ int main ()
 {
     char *user = "nhari";
     //char *user = "vagrant";
-    char result[100][1024] = { 0 };
+    Seq *result = SeqNew(100, free);
+
     int num = GroupGetUserMembership (user, result);
+
     int i;
     printf ("N = %d\n", num);
 
     for (i = 0; i < num; i++)
     {
-        printf ("res(%d)=%s\n", i, result[i]);
+        printf ("res(%d)=%s\n", i, (char *)result->data[i]);
     }
+
     int res;
-    res = AreListsOfGroupsEqual ("g1,g2,sudo,vagrant", result, num);
+    SeqClear(result);
+    res = AreListsOfGroupsEqual ("g1,g2,sudo,vagrant", result);
     printf ("found=%d\n", res);
-    //res = AreListsOfGroupsEqual ("audio,sudo,vagrant,v1", result, num);
-    res = AreListsOfGroupsEqual ("audio,sudo", result, num);
+    //res = AreListsOfGroupsEqual ("audio,sudo,vagrant,v1", result);
+    SeqClear(result);
+    res = AreListsOfGroupsEqual ("audio,sudo", result);
     printf ("found=%d\n", res);
 
     char gbuf[100];
@@ -186,3 +194,4 @@ int main ()
     return 0;
 }
 #endif
+

@@ -296,18 +296,19 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
             CFUSR_SETBIT (*changemap, i_group);
             printf ("bit %d changed\n", i_group);
         }
-        char glist[100][1024] = { 0 };
+        Seq *glist = SeqNew(100, free);
         int num = GroupGetUserMembership (puser, glist);
         printf ("The big %s versus %d[%s,%s] other groups\n", u.groups2_secondary, num,
                 glist[0], glist[1]);
 
         /*TODO: fix differs fct */
         if (u.groups2_secondary != NULL
-            && AreListsOfGroupsEqual (u.groups2_secondary, glist, num) == 0)
+            && AreListsOfGroupsEqual (u.groups2_secondary, glist) == 0)
         {
             CFUSR_SETBIT (*changemap, i_groups);
             printf ("bit %d changed\n", i_groups);
         }
+        SeqDestroy(glist);
         ////////////////////////////////////////////
     }
     if (*changemap == 0L)
