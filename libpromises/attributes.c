@@ -174,6 +174,18 @@ Attributes GetPackageAttributes(const EvalContext *ctx, const Promise *pp)
 
 /*******************************************************************/
 
+Attributes GetUserAttributes(const EvalContext *ctx, const Promise *pp)
+{
+    Attributes attr = { {0} };
+
+    attr.transaction = GetTransactionConstraints(ctx, pp);
+    attr.classes = GetClassDefinitionConstraints(ctx, pp);
+    attr.users = GetUserConstraints(ctx, pp);
+    return attr;
+}
+
+/*******************************************************************/
+
 Attributes GetDatabaseAttributes(const EvalContext *ctx, const Promise *pp)
 {
     Attributes attr = { {0} };
@@ -1663,4 +1675,38 @@ Database GetDatabaseConstraints(const EvalContext *ctx, const Promise *pp)
     }
 
     return d;
+}
+/*******************************************************************/
+
+User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
+{
+    User u;
+    char *value;
+
+    value = ConstraintGetRvalValue(ctx, "policy", pp, RVAL_TYPE_SCALAR);
+    u.policy = UserStateFromString(value);
+
+    u.uid = ConstraintGetRvalValue(ctx, "uid", pp, RVAL_TYPE_SCALAR);
+
+    u.user = ConstraintGetRvalValue(ctx, "user", pp, RVAL_TYPE_SCALAR);
+    u.user_password = ConstraintGetRvalValue(ctx, "user_password", pp, RVAL_TYPE_SCALAR);
+    u.description = ConstraintGetRvalValue(ctx, "description", pp, RVAL_TYPE_SCALAR);
+
+    u.create_home = PromiseGetConstraintAsBoolean(ctx, "create_home", pp);
+
+    u.group_primary = ConstraintGetRvalValue(ctx, "group_primary", pp, RVAL_TYPE_SCALAR);
+    u.groups_secondary = PromiseGetConstraintAsList(ctx, "groups_secondary", pp);
+    u.groups2_secondary = ConstraintGetRvalValue(ctx, "groups2_secondary", pp, RVAL_TYPE_SCALAR);
+    u.home_dir = ConstraintGetRvalValue(ctx, "home_dir", pp, RVAL_TYPE_SCALAR);
+    u.shell = ConstraintGetRvalValue(ctx, "shell", pp, RVAL_TYPE_SCALAR);
+
+    u.remove = PromiseGetConstraintAsBoolean(ctx, "remove", pp);
+
+    if (value && ((u.policy) == USER_STATE_NONE))
+    {
+        Log(LOG_LEVEL_ERR, "Unsupported user policy '%s' in users promise", value);
+        PromiseRef(LOG_LEVEL_ERR, pp);
+    }
+
+    return u;
 }

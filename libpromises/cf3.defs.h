@@ -1500,6 +1500,31 @@ typedef struct
 } Database;
 
 /*************************************************************************/
+typedef enum
+{
+    USER_STATE_PRESENT,
+    USER_STATE_ABSENT,
+    USER_STATE_LOCKED,
+    USER_STATE_NONE
+} UserState;
+
+typedef struct
+{
+    UserState policy;
+    char *uid;
+    char *user;
+    char *user_password;
+    char *description;
+    bool create_home;
+    char *group_primary;
+    Rlist *groups_secondary;
+    char *groups2_secondary;
+    char *home_dir;
+    char *shell;
+    bool remove;
+} User;
+
+/*************************************************************************/
 
 typedef enum
 {
@@ -1578,6 +1603,7 @@ typedef struct
     Acl acl;
     Database database;
     Services service;
+    User users;
     Environments env;
     char *transformer;
     char *pathtype;

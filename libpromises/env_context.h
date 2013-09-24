@@ -109,23 +109,18 @@ struct EvalContext_
 EvalContext *EvalContextNew(void);
 void EvalContextDestroy(EvalContext *ctx);
 
-void EvalContextHeapAddSoft(EvalContext *ctx, const char *context, const char *ns);
-void EvalContextHeapAddHard(EvalContext *ctx, const char *context);
 void EvalContextHeapAddAbort(EvalContext *ctx, const char *context, const char *activated_on_context);
 void EvalContextHeapAddAbortCurrentBundle(EvalContext *ctx, const char *context, const char *activated_on_context);
-
-void EvalContextStackFrameAddSoft(EvalContext *ctx, const char *context);
 
 void EvalContextHeapPersistentSave(const char *context, const char *ns, unsigned int ttl_minutes, ContextStatePolicy policy);
 void EvalContextHeapPersistentRemove(const char *context);
 void EvalContextHeapPersistentLoadAll(EvalContext *ctx);
 
-bool EvalContextHeapContainsSoft(const EvalContext *ctx, const char *ns, const char *context);
-bool EvalContextHeapContainsHard(const EvalContext *ctx, const char *context);
-bool EvalContextStackFrameContainsSoft(const EvalContext *ctx, const char *context);
-
+bool EvalContextClassPut(EvalContext *ctx, const char *ns, const char *name, bool is_soft, ContextScope scope);
+void EvalContextClassPutHard(EvalContext *ctx, const char *name);
+Class *EvalContextClassGet(const EvalContext *ctx, const char *ns, const char *name);
 bool EvalContextClassRemove(EvalContext *ctx, const char *ns, const char *name);
-void EvalContextStackFrameRemoveSoft(EvalContext *ctx, const char *context);
+StringSet *EvalContextClassTags(const EvalContext *ctx, const char *ns, const char *name);
 
 ClassTableIterator *EvalContextClassTableIteratorNewGlobal(const EvalContext *ctx, const char *ns, bool is_hard, bool is_soft);
 ClassTableIterator *EvalContextClassTableIteratorNewLocal(const EvalContext *ctx);
@@ -142,7 +137,7 @@ char *EvalContextStackPath(const EvalContext *ctx);
 const Promise *EvalContextStackCurrentPromise(const EvalContext *ctx);
 const Bundle *EvalContextStackCurrentBundle(const EvalContext *ctx);
 
-bool EvalContextVariablePut(EvalContext *ctx, const VarRef *ref, Rval rval, DataType type);
+bool EvalContextVariablePut(EvalContext *ctx, const VarRef *ref, const void *value, DataType type);
 bool EvalContextVariablePutSpecial(EvalContext *ctx, SpecialScope scope, const char *lval, const void *value, DataType type);
 bool EvalContextVariableGet(const EvalContext *ctx, const VarRef *ref, Rval *rval_out, DataType *type_out);
 bool EvalContextVariableRemoveSpecial(const EvalContext *ctx, SpecialScope scope, const char *lval);

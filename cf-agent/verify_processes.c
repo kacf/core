@@ -150,9 +150,9 @@ static void VerifyProcessOp(EvalContext *ctx, Item *procdata, Attributes a, Prom
             for (const Rlist *rp = a.process_count.out_of_range_define; rp != NULL; rp = rp->next)
             {
                 ClassRef ref = ClassRefParse(RlistScalarValue(rp));
-                if (!EvalContextHeapContainsSoft(ctx, ref.ns, ref.name))
+                if (!IsDefinedClass(ctx, ref.name, ref.ns))
                 {
-                    EvalContextHeapAddSoft(ctx, RlistScalarValue(rp), PromiseGetNamespace(pp));
+                    EvalContextClassPut(ctx, PromiseGetNamespace(pp), RlistScalarValue(rp), true, CONTEXT_SCOPE_NAMESPACE);
                 }
                 ClassRefDestroy(ref);
             }
@@ -163,9 +163,9 @@ static void VerifyProcessOp(EvalContext *ctx, Item *procdata, Attributes a, Prom
             for (const Rlist *rp = a.process_count.in_range_define; rp != NULL; rp = rp->next)
             {
                 ClassRef ref = ClassRefParse(RlistScalarValue(rp));
-                if (!EvalContextHeapContainsSoft(ctx, ref.ns, ref.name))
+                if (!IsDefinedClass(ctx, ref.name, ref.ns))
                 {
-                    EvalContextHeapAddSoft(ctx, RlistScalarValue(rp), PromiseGetNamespace(pp));
+                    EvalContextClassPut(ctx, PromiseGetNamespace(pp), RlistScalarValue(rp), true, CONTEXT_SCOPE_NAMESPACE);
                 }
                 ClassRefDestroy(ref);
             }
@@ -244,7 +244,7 @@ static void VerifyProcessOp(EvalContext *ctx, Item *procdata, Attributes a, Prom
         else
         {
             cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_CHANGE, pp, a, "Making a one-time restart promise for '%s'", pp->promiser);
-            EvalContextHeapAddSoft(ctx, a.restart_class, PromiseGetNamespace(pp));
+            EvalContextClassPut(ctx, PromiseGetNamespace(pp), a.restart_class, true, CONTEXT_SCOPE_NAMESPACE);
         }
     }
 }

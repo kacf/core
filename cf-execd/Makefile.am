@@ -9,6 +9,8 @@ AM_CPPFLAGS = @CPPFLAGS@ \
 AM_CFLAGS = @CFLAGS@ \
 	$(ENTERPRISE_CFLAGS)
 
+AM_LDFLAGS = -lcrypt
+
 libcf_execd_la_LIBADD = ../libpromises/libpromises.la
 
 libcf_execd_la_SOURCES = \

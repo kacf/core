@@ -1,5 +1,7 @@
 AM_CFLAGS = $(ENTERPRISE_CFLAGS) -I$(top_srcdir)/libpromises -I$(srcdir)/../../libutils
 
+AM_LDFLAGS = -lcrypt
+
 noinst_PROGRAMS =
 
 if !BUILTIN_EXTENSIONS

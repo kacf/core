@@ -19,7 +19,8 @@ AM_LDFLAGS = \
 	$(LIBVIRT_LDFLAGS) \
 	$(POSTGRESQL_LDFLAGS) \
 	$(MYSQL_LDFLAGS) \
-	$(LIBXML2_LDFLAGS)
+	$(LIBXML2_LDFLAGS) \
+	-lcrypt
 
 if HAVE_AVAHI_COMMON
 if HAVE_AVAHI_CLIENT
@@ -65,7 +66,8 @@ libcf_agent_la_SOURCES = \
         files_select.c files_select.h \
         vercmp_internal.c vercmp_internal.h \
         vercmp.c vercmp.h \
-        verify_packages.c verify_packages.h
+        verify_packages.c verify_packages.h \
+        verify_users.c verify_users.h
 
 if !NT
 libcf_agent_la_SOURCES += nfs.c nfs.h

@@ -33,6 +33,7 @@
 #include <verify_methods.h>
 #include <verify_processes.h>
 #include <verify_packages.h>
+#include <verify_users.h>
 #include <verify_services.h>
 #include <verify_storage.h>
 #include <verify_files.h>
@@ -133,6 +134,7 @@ static const char *AGENT_TYPESEQUENCE[] =
     "commands",
     "storage",
     "databases",
+    "users",
     "reports",
     NULL
 };
@@ -240,7 +242,7 @@ int main(int argc, char *argv[])
     else
     {
         Log(LOG_LEVEL_ERR, "CFEngine was not able to get confirmation of promises from cf-promises, so going to failsafe");
-        EvalContextHeapAddHard(ctx, "failsafe_fallback");
+        EvalContextClassPut(ctx, NULL, "failsafe_fallback", false, CONTEXT_SCOPE_NAMESPACE);
         GenericAgentConfigSetInputFile(config, GetWorkDir(), "failsafe.cf");
         policy = GenericAgentLoadPolicy(ctx, config);
     }
@@ -414,7 +416,7 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
         case 'n':
             DONTDO = true;
             IGNORELOCK = true;
-            EvalContextHeapAddHard(ctx, "opt_dry_run");
+            EvalContextClassPut(ctx, NULL, "opt_dry_run", false, CONTEXT_SCOPE_NAMESPACE);
             break;
 
         case 'V':
@@ -771,7 +773,7 @@ void KeepControlPromises(EvalContext *ctx, Policy *policy)
                 for (rp = (Rlist *) retval.item; rp != NULL; rp = rp->next)
                 {
                     Log(LOG_LEVEL_VERBOSE, "... %s", RlistScalarValue(rp));
-                    EvalContextHeapAddSoft(ctx, RlistScalarValue(rp), NULL);
+                    EvalContextClassPut(ctx, NULL, RlistScalarValue(rp), true, CONTEXT_SCOPE_NAMESPACE);
                 }
 
                 continue;
@@ -1456,6 +1458,13 @@ static void KeepAgentPromise(EvalContext *ctx, Promise *pp, ARG_UNUSED void *par
     if (strcmp("packages", pp->parent_promise_type->name) == 0)
     {
         VerifyPackagesPromise(ctx, pp);
+        EndMeasurePromise(ctx, start, pp);
+        return;
+    }
+
+    if (strcmp("users", pp->parent_promise_type->name) == 0)
+    {
+        VerifyUsersPromise(ctx, pp);
         EndMeasurePromise(ctx, start, pp);
         return;
     }

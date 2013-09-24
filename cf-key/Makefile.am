@@ -9,6 +9,8 @@ AM_CPPFLAGS = @CPPFLAGS@ \
 AM_CFLAGS = @CFLAGS@ \
 	$(ENTERPRISE_CFLAGS)
 
+AM_LDFLAGS = -lcrypt
+
 libcf_key_la_SOURCES = \
 	cf-key.c \
         cf-key-functions.c cf-key-functions.h

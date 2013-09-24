@@ -1,7 +1,7 @@
 noinst_LTLIBRARIES = libutils.la
 
 libutils_la_LIBADD = ../libcompat/libcompat.la
-
+AM_CFLAGS = @CFLAGS@ -D_GNU_SOURCE
 libutils_la_SOURCES = \
 	alloc.c alloc.h \
 	atexit.c atexit.h \
@@ -32,7 +32,8 @@ libutils_la_SOURCES = \
 	file_lib.c file_lib.h \
 	man.c man.h \
 	rb-tree.c rb-tree.h \
-	mustache.c mustache.h
+	mustache.c mustache.h \
+	pwcrypt.c pwcrypt.h
 
 CLEANFILES = *.gcno *.gcda
 

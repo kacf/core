@@ -1,0 +1,14 @@
+body common control {
+  bundlesequence => {"test"};
+}
+bundle agent test
+{
+  vars:
+    "desc_string" string => "This description should make the CFEngine test pass";
+
+  users:
+    "johndoe2"
+      policy => "present",
+      description => "$(desc_string)";
+}
+

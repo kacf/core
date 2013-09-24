@@ -933,13 +933,13 @@ static void CopyLocalizedReferencesToBundleScope(EvalContext *ctx, const Bundle 
                     Rlist *list = RvalCopy((Rval) {retval.item, RVAL_TYPE_LIST}).item;
                     RlistFlatten(ctx, &list);
 
-                    EvalContextVariablePut(ctx, mangled_ref, (Rval) { list, RVAL_TYPE_LIST }, type);
+                    EvalContextVariablePut(ctx, mangled_ref, list, type);
                 }
                 break;
 
             case RVAL_TYPE_CONTAINER:
             case RVAL_TYPE_SCALAR:
-                EvalContextVariablePut(ctx, mangled_ref, retval, type);
+                EvalContextVariablePut(ctx, mangled_ref, retval.item, type);
                 break;
 
             case RVAL_TYPE_FNCALL:
@@ -1073,7 +1073,7 @@ static void ResolveControlBody(EvalContext *ctx, GenericAgentConfig *config, con
         VarRef *ref = VarRefParseFromScope(cp->lval, scope);
         EvalContextVariableRemove(ctx, ref);
 
-        if (!EvalContextVariablePut(ctx, ref, returnval, ConstraintSyntaxGetDataType(body_syntax, cp->lval)))
+        if (!EvalContextVariablePut(ctx, ref, returnval.item, ConstraintSyntaxGetDataType(body_syntax, cp->lval)))
         {
             Log(LOG_LEVEL_ERR, "Rule from %s at/before line %zu", control_body->source_path, cp->offset.line);
         }
@@ -1094,7 +1094,7 @@ static void ResolveControlBody(EvalContext *ctx, GenericAgentConfig *config, con
             snprintf(VFQNAME, CF_MAXVARSIZE, "%s.%s", VUQNAME, VDOMAIN);
             EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, "fqhost", VFQNAME, DATA_TYPE_STRING);
             EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, "domain", VDOMAIN, DATA_TYPE_STRING);
-            EvalContextHeapAddHard(ctx, VDOMAIN);
+            EvalContextClassPutHard(ctx, VDOMAIN);
         }
 
         if (strcmp(cp->lval, CFG_CONTROLBODY[COMMON_CONTROL_IGNORE_MISSING_INPUTS].lval) == 0)

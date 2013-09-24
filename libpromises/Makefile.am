@@ -38,6 +38,7 @@ libpromises_la_SOURCES = \
         dbm_migration.c dbm_migration.h \
         dbm_migration_lastseen.c \
         dbm_migration_bundles.c \
+        dbm_lmdb.c \
         dbm_quick.c \
         dbm_tokyocab.c \
         dir.h dir_priv.h \
@@ -80,6 +81,7 @@ libpromises_la_SOURCES = \
         mod_services.c mod_services.h \
         mod_storage.c mod_storage.h \
         mod_knowledge.c mod_knowledge.h \
+        mod_users.c mod_users.h users_groups.c users_groups.h \
         modes.c \
         mutex.c mutex.h \
         ornaments.c ornaments.h \
