@@ -81,6 +81,7 @@ typedef enum
     TYPE_SEQUENCE_DEFAULTS,
     TYPE_SEQUENCE_CONTEXTS,
     TYPE_SEQUENCE_INTERFACES,
+    TYPE_SEQUENCE_USERS,
     TYPE_SEQUENCE_FILES,
     TYPE_SEQUENCE_PACKAGES,
     TYPE_SEQUENCE_ENVIRONMENTS,
@@ -125,6 +126,7 @@ static const char *AGENT_TYPESEQUENCE[] =
     "defaults",
     "classes",                  /* Maelstrom order 2 */
     "interfaces",
+    "users",
     "files",
     "packages",
     "guest_environments",
@@ -134,7 +136,6 @@ static const char *AGENT_TYPESEQUENCE[] =
     "commands",
     "storage",
     "databases",
-    "users",
     "reports",
     NULL
 };
