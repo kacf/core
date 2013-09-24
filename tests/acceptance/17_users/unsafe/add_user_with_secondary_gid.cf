@@ -45,10 +45,10 @@ bundle agent test
     "johndoe"
       policy => "present",
       # "2" is "bin" on most systems.
-      gid_secondary => { "2" };
+      groups_secondary => { "2" };
 
   commands:
-    "$(G.echo) Pass > $(G.testfile)"
+    "$(G.echo) Succeeded > $(G.testfile)"
       contain => test_contain_body;
 }
 
@@ -57,7 +57,7 @@ bundle agent test
 bundle agent check
 {
   classes:
-    "ok" not => strcmp("0", countlinesmatching("Pass", "$(G.testfile)"));
+    "ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)"));
 
   reports:
     ok::

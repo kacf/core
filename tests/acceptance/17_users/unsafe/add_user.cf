@@ -34,7 +34,7 @@ bundle agent test
 bundle agent check
 {
   classes:
-      "ok" expression => regcmp(".*johndoe.*", execresult("$(G.grep) /etc/passwd ; $(G.grep) /etc/passwd", "useshell"));
+      "ok" expression => regcmp(".*johndoe.*", execresult("$(G.grep) johndoe /etc/passwd", "noshell"));
 
   reports:
     ok::

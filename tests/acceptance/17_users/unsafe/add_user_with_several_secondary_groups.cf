@@ -53,12 +53,12 @@ bundle agent test
   users:
     "johndoe"
       policy => "present",
-      gid_secondary => { getgid("bin"), getgid("sys") };
+      groups_secondary => { "bin", "sys" };
 
   commands:
-    "$(G.echo) Pass > $(G.testfile)"
+    "$(G.echo) Succeeded > $(G.testfile)"
       contain => test_contain_body;
-    "$(G.echo) Pass > $(G.testfile).2"
+    "$(G.echo) Succeeded > $(G.testfile).2"
       contain => test_contain_body;
 }
 
@@ -67,8 +67,8 @@ bundle agent test
 bundle agent check
 {
   classes:
-    "ok" and => { !strcmp("0", countlinesmatching("Pass", "$(G.testfile)")),
-                  !strcmp("0", countlinesmatching("Pass", "$(G.testfile).2"))
+    "ok" and => { !strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)")),
+                  !strcmp("0", countlinesmatching("Succeeded", "$(G.testfile).2"))
                 };
 
   reports:

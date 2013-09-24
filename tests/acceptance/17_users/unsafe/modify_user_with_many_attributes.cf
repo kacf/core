@@ -19,8 +19,8 @@ bundle agent init
     "johndoe"
       policy => "present",
       uid => "8765",
-      gid_primary => "3",
-      gid_secondary => { getgid("bin") },
+      group_primary => "3",
+      groups_secondary => { "bin" },
       shell => "$(G.cat)",
       description => "Wrong!";
 }
@@ -37,8 +37,8 @@ bundle agent test
       policy => "present",
       uid => "9876",
       # "2" is "bin" on most systems.
-      gid_primary => "2",
-      gid_secondary => { getgid("sys") },
+      group_primary => "2",
+      groups_secondary => { "sys" },
       shell => "$(G.echo)",
       description => "$(desc_string)";
 }
