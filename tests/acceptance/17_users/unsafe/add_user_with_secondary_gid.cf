@@ -36,7 +36,6 @@ bundle agent init
 body contain test_contain_body
 {
   useshell => "useshell";
-  exec_owner => "johndoe";
 }
 
 bundle agent test
@@ -48,7 +47,7 @@ bundle agent test
       groups_secondary => { "2" };
 
   commands:
-    "$(G.echo) Succeeded > $(G.testfile)"
+    "sudo -u johndoe /bin/sh -c '$(G.echo) Succeeded > $(G.testfile)'"
       contain => test_contain_body;
 }
 

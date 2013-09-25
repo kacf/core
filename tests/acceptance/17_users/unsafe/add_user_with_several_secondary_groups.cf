@@ -45,7 +45,6 @@ bundle agent init
 body contain test_contain_body
 {
   useshell => "useshell";
-  exec_owner => "johndoe";
 }
 
 bundle agent test
@@ -56,9 +55,9 @@ bundle agent test
       groups_secondary => { "bin", "sys" };
 
   commands:
-    "$(G.echo) Succeeded > $(G.testfile)"
+    "sudo -u johndoe /bin/sh -c '$(G.echo) Succeeded > $(G.testfile)'"
       contain => test_contain_body;
-    "$(G.echo) Succeeded > $(G.testfile).2"
+    "sudo -u johndoe /bin/sh -c '$(G.echo) Succeeded > $(G.testfile).2'"
       contain => test_contain_body;
 }
 
@@ -67,9 +66,9 @@ bundle agent test
 bundle agent check
 {
   classes:
-    "ok" and => { !strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)")),
-                  !strcmp("0", countlinesmatching("Succeeded", "$(G.testfile).2"))
-                };
+    "1_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)"));
+    "2_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile).2"));
+    "ok" and => { "1_ok", "2_ok" };
 
   reports:
     ok::

@@ -21,7 +21,12 @@ bundle agent init
 
   files:
     "$(G.testfile)"
-      delete => "true";
+      delete => init_delete;
+}
+
+body delete init_delete
+{
+  rmdirs => "false";
 }
 
 #######################################################
@@ -53,6 +58,7 @@ body perms check_perms_body
 
 body classes check_classes_body
 {
+  promise_repaired => { "not_ok" };
   promise_kept => { "ok" };
 }
 
@@ -64,8 +70,8 @@ bundle agent check
       classes => check_classes_body;
 
   reports:
-    ok::
+    ok.!not_ok::
       "$(this.promise_filename) Pass";
-    !ok::
+    !ok|not_ok::
       "$(this.promise_filename) FAIL";
 }

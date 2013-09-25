@@ -38,7 +38,7 @@ bundle agent check
     "currentdir" string => dirname("$(this.promise_filename)");
 
   classes:
-    "ok" expression => strcmp("Succeeded", execresult("sudo su johndoe $currentdir$(G.DS)text.txt"));
+    "ok" expression => regcmp(".*Succeeded.*", execresult("sudo su johndoe $(currentdir)$(G.DS)add_user_with_shell.txt", "useshell"));
 
   reports:
     ok::
