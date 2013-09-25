@@ -26,20 +26,27 @@
 
 #include <syntax.h>
 
+static const ConstraintSyntax password_constraints[] =
+{
+    ConstraintSyntaxNewOption("format", "plaintext,hash", "The format of the given password, either plaintext or hash", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewString("data", "", "Password", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewNull()
+};
+
+static const BodySyntax password_body = BodySyntaxNew("password", password_constraints, NULL, SYNTAX_STATUS_NORMAL);
+
 static const ConstraintSyntax users_constraints[] =
 {
     ConstraintSyntaxNewOption("policy", "present,absent,locked", "The promised state of a given user", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("user", "", "User name", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("uid", "", "User id", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("user_password", "", "User password", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewString("user", CF_USERRANGE, "User name", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewInt("uid", CF_INTRANGE, "User id", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewBody("password", &password_body, "User password", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("description", "", "User comment", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewBool("create_home", "If true, create home directory for new users", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("group_primary", "", "User primary group", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewStringList("groups_secondary", ".*", "User additional groups", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("groups2_secondary", "", "Duplicated (just in order to test standalone code)", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("home_dir", "", "User home directory", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("shell", "", "User shell", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewBool("remove", "If true, remove ???", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewString("home_dir", CF_ABSPATHRANGE, "User home directory", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewString("shell", CF_ABSPATHRANGE, "User shell", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewNull()
 };
 

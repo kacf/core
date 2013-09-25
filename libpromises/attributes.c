@@ -1689,7 +1689,9 @@ User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
     u.uid = ConstraintGetRvalValue(ctx, "uid", pp, RVAL_TYPE_SCALAR);
 
     u.user = ConstraintGetRvalValue(ctx, "user", pp, RVAL_TYPE_SCALAR);
-    u.user_password = ConstraintGetRvalValue(ctx, "user_password", pp, RVAL_TYPE_SCALAR);
+    value = ConstraintGetRvalValue(ctx, "format", pp, RVAL_TYPE_SCALAR);
+    u.password_format = PasswordFormatFromString(value);
+    u.password = ConstraintGetRvalValue(ctx, "data", pp, RVAL_TYPE_SCALAR);
     u.description = ConstraintGetRvalValue(ctx, "description", pp, RVAL_TYPE_SCALAR);
 
     u.create_home = PromiseGetConstraintAsBoolean(ctx, "create_home", pp);
@@ -1699,8 +1701,6 @@ User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
     u.groups2_secondary = ConstraintGetRvalValue(ctx, "groups2_secondary", pp, RVAL_TYPE_SCALAR);
     u.home_dir = ConstraintGetRvalValue(ctx, "home_dir", pp, RVAL_TYPE_SCALAR);
     u.shell = ConstraintGetRvalValue(ctx, "shell", pp, RVAL_TYPE_SCALAR);
-
-    u.remove = PromiseGetConstraintAsBoolean(ctx, "remove", pp);
 
     if (value && ((u.policy) == USER_STATE_NONE))
     {

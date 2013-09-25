@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <security/pam_appl.h>
+
 #include <pwcrypt.h>
 #include <users_groups.h>
 
@@ -30,7 +32,7 @@ typedef struct
     UserState policy;
     char *uid;
     char *user;
-    char *user_password;
+    char *password;
     char *description;
     bool create_home;
     char *group_primary;
@@ -61,6 +63,126 @@ typedef enum
 #define CFUSR_KEPT      0
 #define CFUSR_REPAIRED  1
 #define CFUSR_NOTKEPT   2
+
+static int PasswordSupplier(int num_msg, const struct pam_message **msg,
+           struct pam_response **resp, void *appdata_ptr)
+{
+    // All allocations here will be freed by the pam framework.
+    *resp = xmalloc(num_msg * sizeof(struct pam_response));
+    for (int i = 0; i < num_msg; i++)
+    {
+        if ((*msg)[i].msg_style == PAM_PROMPT_ECHO_OFF)
+        {
+            (*resp)[i].resp = xstrdup((const char *)appdata_ptr);
+        }
+        else
+        {
+            (*resp)[i].resp = xstrdup("");
+        }
+        (*resp)[i].resp_retcode = 0;
+    }
+
+    return PAM_SUCCESS;
+}
+
+static bool IsPasswordCorrect(const char *puser, const char* password, PasswordFormat format, const char *hash)
+{
+    /*
+     * Check if password is already correct. If format is 'hash' we just do a simple
+     * comparison with the supplied hash value, otherwise we try a pam login using
+     * the real password.
+     */
+
+    if (format == PASSWORD_FORMAT_HASH)
+    {
+        return (strcmp(password, hash) == 0);
+    }
+    else if (format != PASSWORD_FORMAT_PLAINTEXT)
+    {
+        ProgrammingError("Unknown PasswordFormat value");
+    }
+
+    int status;
+    pam_handle_t *handle;
+    struct pam_conv conv;
+    conv.conv = PasswordSupplier;
+    conv.appdata_ptr = (void*)password;
+
+    status = pam_start("login", puser, &conv, &handle);
+    if (status != PAM_SUCCESS)
+    {
+        Log(LOG_LEVEL_ERR, "Could not initialize pam session. (pam_start: '%s')", pam_strerror(NULL, status));
+        return false;
+    }
+    status = pam_authenticate(handle, PAM_SILENT);
+    pam_end(handle, status);
+    if (status == PAM_SUCCESS)
+    {
+        return true;
+    }
+    else if (status != PAM_AUTH_ERR)
+    {
+        Log(LOG_LEVEL_ERR, "Could not check password for user '%s' against stored password. (pam_authenticate: '%s')",
+            puser, pam_strerror(handle, status));
+        return false;
+    }
+
+    return false;
+}
+
+static int ChangePassword(const char *puser, const char *password, PasswordFormat format)
+{
+    const char *cmd_str;
+    if (format == PASSWORD_FORMAT_PLAINTEXT)
+    {
+        cmd_str = "chpasswd";
+    }
+    else if (format == PASSWORD_FORMAT_HASH)
+    {
+        cmd_str = "chpasswd -e";
+    }
+    else
+    {
+        ProgrammingError("Unknown PasswordFormat value");
+    }
+    FILE *cmd = cf_popen_sh(cmd_str, "w");
+    if (!cmd)
+    {
+        Log(LOG_LEVEL_ERR, "Could not launch password changing command '%s': %s.", cmd_str, GetErrorStr());
+        return CFUSR_NOTKEPT;
+    }
+
+    // String lengths plus a ':' and a '\n', but not including '\0'.
+    size_t total_len = strlen(puser) + strlen(password) + 2;
+    char change_string[total_len + 1];
+    snprintf(change_string, total_len + 1, "%s:%s\n", puser, password);
+    clearerr(cmd);
+    if (fwrite(change_string, total_len, 1, cmd) != 1)
+    {
+        const char *error_str;
+        if (ferror(cmd))
+        {
+            error_str = GetErrorStr();
+        }
+        else
+        {
+            error_str = "Unknown error";
+        }
+        Log(LOG_LEVEL_ERR, "Could not write password to password changing command '%s': %s.", cmd_str, error_str);
+        cf_pclose(cmd);
+        return CFUSR_NOTKEPT;
+    }
+    cf_pclose(cmd);
+
+    if (IsPasswordCorrect(puser, password, format, password))
+    {
+        return CFUSR_REPAIRED;
+    }
+    else
+    {
+        return CFUSR_NOTKEPT;
+    }
+}
 
 bool VerifyIfUserExists (char *user)
 {
@@ -261,28 +383,12 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
             CFUSR_SETBIT (*changemap, i_shell);
             printf ("bit %d changed\n", i_shell);
         }
-        if (u.user_password != NULL && strcmp (u.user_password, ""))
+        if (u.password != NULL && strcmp (u.password, ""))
         {
-            if (u.user_password[0] != '$')
+            if (!IsPasswordCorrect(puser, u.password, u.password_format, pinfo[1]))
             {
-                char encrypted[1024];
-                //TODO: fetch "salt" from pinfo[2nd field]
-                char salt[20];
-                getrndsalt ((PwHashMethod) (pinfo[1][1] - '0'), salt);
-                cf_crypt (u.user_password, salt, &encrypted);
-                if (strcmp (encrypted, pinfo[1]))
-                {
-                    CFUSR_SETBIT (*changemap, i_password);
-                    printf ("bit %d changed\n", i_password);
-                }
-            }
-            else
-            {
-                if (strcmp (u.user_password, pinfo[1]))
-                {
-                    CFUSR_SETBIT (*changemap, i_password);
-                    printf ("bit %d changed\n", i_password);
-                }
+                CFUSR_SETBIT (*changemap, i_password);
+                printf ("bit %d changed\n", i_password);
             }
         }
         //TODO #2: parse groups and compare with /etc/groups
@@ -335,26 +441,6 @@ int DoCreateUser (char *puser, User u)
         sprintf (cmd, "%s -u %d", cmd, atoi (u.uid));
     }
 
-    if (u.user_password != NULL && strcmp (u.user_password, ""))
-    {
-        ////////////////////////////////////////////
-        //TODO: generate random salt              //
-        //TODO: might have an algorithm input     //
-        ////////////////////////////////////////////
-        if (u.user_password[0] != '$')
-        {
-            char encrypted[1024];
-            char salt[20];
-            getrndsalt (sha512, salt);
-            cf_crypt (u.user_password, salt, &encrypted);
-            sprintf (cmd, "%s -p '%s'", cmd, encrypted);
-        }
-        else
-        {
-            sprintf (cmd, "%s -p '%s'", cmd, u.user_password);
-        }
-    }
-
     if (u.description != NULL && strcmp (u.description, ""))
     {
         sprintf (cmd, "%s -c \"%s\"", cmd, u.description);
@@ -390,6 +476,12 @@ int DoCreateUser (char *puser, User u)
 
     printf ("cmd=[%s]\n", cmd);
     system(cmd);
+
+    if (u.password != NULL && strcmp (u.password, ""))
+    {
+        ChangePassword(puser, u.password, u.password_format);
+    }
+
     return 0;
 }
 
@@ -399,11 +491,6 @@ int DoRemoveUser (char *puser, User u)
 
     strcpy (cmd, CFUSR_CMDDEL);
 
-    if (u.remove == true)
-    {
-        //TODO: needs force to delete home for sure
-        sprintf (cmd, "%s -r", cmd);
-    }
     if (strcmp (puser, ""))
     {
         sprintf (cmd, "%s %s", cmd, puser);
@@ -428,19 +515,7 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
 
     if (CFUSR_CHECKBIT (changemap, i_password) != 0)
     {
-        if (u.user_password[0] != '$')
-        {
-            //Generate with a different salt
-            char encrypted[1024];
-            char salt[20];
-            getrndsalt (sha512, salt);
-            cf_crypt (u.user_password, salt, &encrypted);
-            sprintf (cmd, "%s -p '%s'", cmd, encrypted);
-        }
-        else
-        {
-            sprintf (cmd, "%s -p '%s'", cmd, u.user_password);
-        }
+        ChangePassword(puser, u.password, u.password_format);
     }
 
     if (CFUSR_CHECKBIT (changemap, i_comment) != 0)
@@ -560,7 +635,7 @@ int test01 ()
 {
     User u0 = { 0 };
     u0.policy = USER_STATE_PRESENT;
-    u0.user_password = strdup ("v344t");
+    u0.password = strdup ("v344t");
     u0.group_primary = strdup ("xorg13");
     u0.groups2_secondary = strdup ("xorg11,xorg10");
 
@@ -571,13 +646,13 @@ int test01 ()
 
     User u2 = { 0 };
     u2.policy = USER_STATE_PRESENT;
-    u2.user_password =
+    u2.password =
         strdup
         ("$6$gDNrZkGDnUFMV9g$Ud94uWbcMXVfusUR9VMB07eUu53BuMgkboT9nwugpelcEY9PH57Oh.4Zl0bGnjeR.YYB9lQTAuUFBBdfJIhim/");
 
     User u3 = { 0 };
     u3.policy = USER_STATE_PRESENT;
-    u3.user_password = strdup ("v344t");
+    u3.password = strdup ("v344t");
 
     int result;
     //VerifyOneUsersPromise("xusr13", u0, &result);
@@ -596,7 +671,7 @@ int main ()
     u.create_home = true;
     //u.user = strdup("nhari");
     //u.user = strdup("vagrant");
-    u.user_password = strdup ("v344t");
+    u.password = strdup ("v344t");
     u.description = strdup ("Pierre Nhari");
     u.group_primary = strdup ("myg");
     u.groups2_secondary = strdup ("myg1,myg2,myg3");

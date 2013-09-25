@@ -32,7 +32,8 @@ libcf_agent_la_LIBADD = ../libpromises/libpromises.la \
 	$(LIBVIRT_LIBS) \
 	$(POSTGRESQL_LIBS) \
 	$(MYSQL_LIBS) \
-	$(LIBXML2_LIBS)
+	$(LIBXML2_LIBS) \
+	-lpam
 
 libcf_agent_la_SOURCES = \
         agent-diagnostics.c agent-diagnostics.h \

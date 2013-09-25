@@ -1508,12 +1508,20 @@ typedef enum
     USER_STATE_NONE
 } UserState;
 
+typedef enum
+{
+    PASSWORD_FORMAT_PLAINTEXT,
+    PASSWORD_FORMAT_HASH,
+    PASSWORD_FORMAT_NONE
+} PasswordFormat;
+
 typedef struct
 {
     UserState policy;
     char *uid;
     char *user;
-    char *user_password;
+    PasswordFormat password_format;
+    char *password;
     char *description;
     bool create_home;
     char *group_primary;
@@ -1521,7 +1529,6 @@ typedef struct
     char *groups2_secondary;
     char *home_dir;
     char *shell;
-    bool remove;
 } User;
 
 /*************************************************************************/
