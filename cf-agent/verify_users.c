@@ -98,7 +98,7 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
 #endif
 
     int result;
-    VerifyOneUsersPromise(pp->promiser, a.users, &result);
+    VerifyOneUsersPromise(pp->promiser, a.users, &result, a.transaction.action);
 
     switch (result) {
          case CFUSR_KEPT:

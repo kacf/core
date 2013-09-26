@@ -132,6 +132,7 @@ static bool IsPasswordCorrect(const char *puser, const char* password, PasswordF
 
 static int ChangePassword(const char *puser, const char *password, PasswordFormat format)
 {
+    int status;
     const char *cmd_str;
     if (format == PASSWORD_FORMAT_PLAINTEXT)
     {
@@ -172,16 +173,14 @@ static int ChangePassword(const char *puser, const char *password, PasswordForma
         cf_pclose(cmd);
         return CFUSR_NOTKEPT;
     }
-    cf_pclose(cmd);
-
-    if (IsPasswordCorrect(puser, password, format, password))
+    status = cf_pclose(cmd);
+    if (status)
     {
-        return CFUSR_REPAIRED;
-    }
-    else
-    {
+        Log(LOG_LEVEL_ERR, "'%s' returned non-zero status: %i\n", cmd_str, status);
         return CFUSR_NOTKEPT;
     }
+
+    return CFUSR_REPAIRED;
 }
 
 bool VerifyIfUserExists (char *user)
@@ -427,7 +426,7 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
     }
 }
 
-int DoCreateUser (char *puser, User u)
+int DoCreateUser (char *puser, User u, enum cfopaction action)
 {
     char cmd[4096];
     if (puser == NULL || !strcmp (puser, ""))
@@ -475,17 +474,24 @@ int DoCreateUser (char *puser, User u)
     }
 
     printf ("cmd=[%s]\n", cmd);
-    system(cmd);
-
-    if (u.password != NULL && strcmp (u.password, ""))
+    if (action == cfa_warn)
     {
-        ChangePassword(puser, u.password, u.password_format);
+        Log(LOG_LEVEL_NOTICE, "Need to create user '%s'.", puser);
+    }
+    else
+    {
+        system(cmd);
+
+        if (u.password != NULL && strcmp (u.password, ""))
+        {
+            ChangePassword(puser, u.password, u.password_format);
+        }
     }
 
     return 0;
 }
 
-int DoRemoveUser (char *puser, User u)
+int DoRemoveUser (char *puser, User u, enum cfopaction action)
 {
     char cmd[4096];
 
@@ -497,11 +503,18 @@ int DoRemoveUser (char *puser, User u)
     }
 
     printf ("cmd=[%s]\n", cmd);
-    system(cmd);
+    if (action == cfa_warn)
+    {
+        Log(LOG_LEVEL_NOTICE, "Need to remove user '%s'.", puser);
+    }
+    else
+    {
+        system(cmd);
+    }
     return 0;
 }
 
-int DoModifyUser (char *puser, User u, unsigned long changemap)
+int DoModifyUser (char *puser, User u, unsigned long changemap, enum cfopaction action)
 {
     char cmd[4096];
 
@@ -515,7 +528,14 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
 
     if (CFUSR_CHECKBIT (changemap, i_password) != 0)
     {
-        ChangePassword(puser, u.password, u.password_format);
+        if (action == cfa_warn)
+        {
+            Log(LOG_LEVEL_NOTICE, "Need to change password for user '%s'.", puser);
+        }
+        else
+        {
+            ChangePassword(puser, u.password, u.password_format);
+        }
     }
 
     if (CFUSR_CHECKBIT (changemap, i_comment) != 0)
@@ -560,11 +580,18 @@ int DoModifyUser (char *puser, User u, unsigned long changemap)
     sprintf (cmd, "%s %s", cmd, puser);
 
     printf ("cmd=[%s]\n", cmd);
-    system(cmd);
+    if (action == cfa_warn)
+    {
+        Log(LOG_LEVEL_NOTICE, "Need to update user attributes (command '%s').", cmd);
+    }
+    else
+    {
+        system(cmd);
+    }
     return 0;
 }
 
-void VerifyOneUsersPromise (char *puser, User u, int *result)
+void VerifyOneUsersPromise (char *puser, User u, int *result, enum cfopaction action)
 {
     int res;
 
@@ -581,7 +608,7 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
                 == 1)
             {
                 printf ("should act on cmap=%u\n", cmap);
-                res = DoModifyUser (puser, u, cmap);
+                res = DoModifyUser (puser, u, cmap, action);
                 if (!res)
                 {
                     *result = CFUSR_REPAIRED;
@@ -598,7 +625,7 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
         }
         else
         {
-            res = DoCreateUser (puser, u);
+            res = DoCreateUser (puser, u, action);
             if (!res)
             {
                 *result = CFUSR_REPAIRED;
@@ -613,7 +640,7 @@ void VerifyOneUsersPromise (char *puser, User u, int *result)
     {
         if (VerifyIfUserExists (puser) == true)
         {
-            res = DoRemoveUser (puser, u);
+            res = DoRemoveUser (puser, u, action);
             if (!res)
             {
                 *result = CFUSR_REPAIRED;
@@ -657,7 +684,7 @@ int test01 ()
     int result;
     //VerifyOneUsersPromise("xusr13", u0, &result);
     //VerifyOneUsersPromise("xusr13", u1, &result);
-    VerifyOneUsersPromise ("xusr13", u3, &result);
+    VerifyOneUsersPromise ("xusr13", u3, &result, cfa_fix);
 
 }
 
@@ -680,7 +707,7 @@ int main ()
     u.remove = false;
 
     int result;
-    VerifyOneUsersPromise ("vagrant", u, &result);
+    VerifyOneUsersPromise ("vagrant", u, &result, cfa_fix);
     //DoCreateUser(u);
     return 0;
 }
