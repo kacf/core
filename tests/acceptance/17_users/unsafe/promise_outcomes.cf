@@ -1,0 +1,149 @@
+#######################################################
+#
+# Test that promise outcomes are set correctly.
+#
+#######################################################
+
+body common control
+{
+      inputs => { "../../default.cf.sub" };
+      bundlesequence  => { default("$(this.promise_filename)") };
+}
+
+#######################################################
+
+bundle agent init
+{
+  users:
+    "absent_keep"
+      policy => "absent";
+    "absent_repair"
+      policy => "present";
+    "present_keep"
+      policy => "present";
+    "present_repair"
+      policy => "absent";
+    "attributes_keep"
+      policy => "present",
+      uid => "9876",
+      # "2" is "bin" on most systems.
+      group_primary => "2",
+      groups_secondary => { "sys" },
+      shell => "$(G.echo)",
+      description => "Description";
+    "attributes_repair"
+      policy => "present",
+      uid => "9877",
+      # "2" is "bin" on most systems.
+      group_primary => "2",
+      groups_secondary => { "sys" },
+      shell => "$(G.echo)",
+      description => "Description";
+    "password_keep"
+      policy => "present",
+      password => init_password;
+    "password_repair"
+      policy => "present",
+      password => init_password;
+}
+
+body password init_password
+{
+  format => "plaintext";
+  data => "InitPassword";
+}
+
+#######################################################
+
+bundle agent test
+{
+  users:
+    "absent_keep"
+      classes => set_class_if_kept("$(this.promiser)"),
+      policy => "absent";
+    "absent_repair"
+      classes => set_class_if_repaired("$(this.promiser)"),
+      policy => "absent";
+    "present_keep"
+      classes => set_class_if_kept("$(this.promiser)"),
+      policy => "present";
+    "present_repair"
+      classes => set_class_if_repaired("$(this.promiser)"),
+      policy => "present";
+    "attributes_keep"
+      classes => set_class_if_kept("$(this.promiser)"),
+      policy => "present",
+      uid => "9876",
+      # "2" is "bin" on most systems.
+      group_primary => "2",
+      groups_secondary => { "sys" },
+      shell => "$(G.echo)",
+      description => "Description";
+    "attributes_repair"
+      classes => set_class_if_repaired("$(this.promiser)"),
+      policy => "present",
+      uid => "9877",
+      # "2" is "bin" on most systems.
+      group_primary => "2",
+      groups_secondary => { "sys" },
+      shell => "$(G.cat)",
+      description => "Description";
+    "password_keep"
+      classes => set_class_if_kept("$(this.promiser)"),
+      policy => "present",
+      password => init_password;
+    "password_repair"
+      classes => set_class_if_repaired("$(this.promiser)"),
+      policy => "present",
+      password => test_password;
+
+
+  classes:
+    "ok" and => { "absent_keep", "absent_repair", "present_keep", "present_repair",
+                  "attributes_keep", "attributes_repair", "password_keep", "password_repair",  };
+
+  reports:
+    !absent_keep.DEBUG::
+      "absent_keep is NOT set";
+    !absent_repair.DEBUG::
+      "absent_repair is NOT set";
+    !present_keep.DEBUG::
+      "present_keep is NOT set";
+    !present_repair.DEBUG::
+      "present_repair is NOT set";
+    !attributes_keep.DEBUG::
+      "attributes_keep is NOT set";
+    !attributes_repair.DEBUG::
+      "attributes_repair is NOT set";
+    !password_keep.DEBUG::
+      "password_keep is NOT set";
+    !password_repair.DEBUG::
+      "password_repair is NOT set";
+
+    ok::
+      "$(this.promise_filename) Pass";
+    !ok::
+      "$(this.promise_filename) FAIL";
+}
+
+body password test_password
+{
+  format => "plaintext";
+  data => "TestPassword";
+}
+
+body classes set_class_if_kept(x)
+{
+  promise_kept => { "$(x)" };
+}
+
+body classes set_class_if_repaired(x)
+{
+  promise_repaired => { "$(x)" };
+}
+
+#######################################################
+
+bundle agent check
+{
+}

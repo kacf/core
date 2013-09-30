@@ -85,7 +85,7 @@ static int PasswordSupplier(int num_msg, const struct pam_message **msg,
     return PAM_SUCCESS;
 }
 
-static bool IsPasswordCorrect(const char *puser, const char* password, PasswordFormat format, const char *hash)
+static bool IsPasswordCorrect(const char *puser, const char* password, PasswordFormat format, const struct passwd *passwd_info)
 {
     /*
      * Check if password is already correct. If format is 'hash' we just do a simple
@@ -95,7 +95,25 @@ static bool IsPasswordCorrect(const char *puser, const char* password, PasswordF
 
     if (format == PASSWORD_FORMAT_HASH)
     {
-        return (strcmp(password, hash) == 0);
+        // If the hash is very short, it's probably a stub. Try getting the shadow password instead.
+        if (strlen(passwd_info->pw_passwd) <= 4)
+        {
+            int status;
+            struct spwd spwd_info_buf;
+            struct spwd *spwd_info;
+            char spwd_buf[CF_BUFSIZE];
+            status = getspnam_r(puser, &spwd_info_buf, spwd_buf, sizeof(spwd_buf), &spwd_info);
+            if (status)
+            {
+                Log(LOG_LEVEL_ERR, "Could not get information from user shadow database. (getspnam_r: '%s')", GetErrorStrFromCode(status));
+                return false;
+            }
+            else if (swpd_info)
+            {
+                return (strcmp(password, spwd_info->sp_pwdp) == 0);
+            }
+        }
+        return (strcmp(password, passwd_info->pw_passwd) == 0);
     }
     else if (format != PASSWORD_FORMAT_PLAINTEXT)
     {
@@ -181,31 +199,6 @@ static int ChangePassword(const char *puser, const char *password, PasswordForma
     }
 
     return CFUSR_REPAIRED;
-}
-
-bool VerifyIfUserExists (char *user)
-{
-    char entries[7][1024] = { 0 };
-    char line[2048];
-    char *s = NULL;
-    FILE *fp;
-    fp = fopen ("/etc/passwd", "r");
-    if (fp == NULL)
-    {
-        printf ("cannot open file /etc/passwd\n");
-        return false;
-    }
-    while (fgets (line, 2048, fp) != NULL)
-    {
-        if (strncmp (line, user, strlen (user)) == 0
-            && line[strlen (user)] == ':')
-        {
-            fclose (fp);
-            return true;
-        }
-    }
-    fclose (fp);
-    return false;
 }
 
 bool ReadSimpleFile (char *fname, const char *user, char (*entries)[1024])
@@ -347,8 +340,7 @@ int main ()
 }
 #endif
 
-int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
-                             char (*pinfo)[1024], char (*ginfo)[1024],
+int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_info,
                              unsigned long int *changemap)
 {
     bool res;
@@ -359,63 +351,93 @@ int VerifyIfUserNeedsModifs (char *puser, User u, char (*binfo)[1024],
     res = FetchUserGroupInfo (binfo[3] /*4th */ , ginfo);
     printf ("ginfo[1st]='%s'\n", ginfo[0]);
 
-    if (res == true)
+    //name;pass;id;grp;comment;home;shell
+    if (u.description != NULL && strcmp (u.description, passwd_info->pw_gecos))
     {
-        //name;pass;id;grp;comment;home;shell
-        if (u.description != NULL && strcmp (u.description, binfo[4]))
+        CFUSR_SETBIT (*changemap, i_comment);
+        printf ("bit comment %d changed\n", i_comment);
+    }
+    if (u.uid != NULL && (atoi (u.uid) != passwd_info->pw_uid))
+    {
+        CFUSR_SETBIT (*changemap, i_uid);
+        printf ("bit %d changed\n", i_uid);
+    }
+    if (u.home_dir != NULL && strcmp (u.home_dir, passwd_info->pw_dir))
+    {
+        CFUSR_SETBIT (*changemap, i_home);
+        printf ("bit %d changed\n", i_home);
+    }
+    if (u.shell != NULL && strcmp (u.shell, passwd_info->pw_shell))
+    {
+        CFUSR_SETBIT (*changemap, i_shell);
+        printf ("bit %d changed\n", i_shell);
+    }
+    if (u.password != NULL && strcmp (u.password, ""))
+    {
+        if (!IsPasswordCorrect(puser, u.password, u.password_format, passwd_info))
         {
-            CFUSR_SETBIT (*changemap, i_comment);
-            printf ("bit comment %d changed\n", i_comment);
+            CFUSR_SETBIT (*changemap, i_password);
+            printf ("bit %d changed\n", i_password);
         }
-        if (u.uid != NULL && (atoi (u.uid) != atoi (binfo[2])))
+    }
+
+    if (u.group_primary != NULL)
+    {
+        bool group_is_gid = (strlen(u.group_primary) == strspn(u.group_primary, "0123456789"));
+        int gid;
+
+        if (group_is_gid)
         {
-            CFUSR_SETBIT (*changemap, i_uid);
-            printf ("bit %d changed\n", i_uid);
+            gid = atoi(u.group_primary);
         }
-        if (u.home_dir != NULL && strcmp (u.home_dir, binfo[5]))
+        else
         {
-            CFUSR_SETBIT (*changemap, i_home);
-            printf ("bit %d changed\n", i_home);
-        }
-        if (u.shell != NULL && strcmp (u.shell, binfo[6]))
-        {
-            CFUSR_SETBIT (*changemap, i_shell);
-            printf ("bit %d changed\n", i_shell);
-        }
-        if (u.password != NULL && strcmp (u.password, ""))
-        {
-            if (!IsPasswordCorrect(puser, u.password, u.password_format, pinfo[1]))
+            struct group *group_info;
+            errno = 0;
+            group_info = getgrnam(u.group_primary);
+            if (!group_info && errno != 0 && errno != ENOENT)
             {
-                CFUSR_SETBIT (*changemap, i_password);
-                printf ("bit %d changed\n", i_password);
+                Log(LOG_LEVEL_ERR, "Could not obtain information about group '%s'. (getgrnam: '%s')", u.group_primary, GetErrorStr());
+                gid = -1;
+            }
+            else if (!group_info)
+            {
+                Log(LOG_LEVEL_ERR, "No such group '%s'.", u.group_primary);
+                gid = -1;
+            }
+            else
+            {
+                gid = group_info->gr_gid;
             }
         }
-        //TODO #2: parse groups and compare with /etc/groups
-        char gbuf[100];
-        int res;
-        res = GroupConvert (binfo[6], gbuf);
 
-        if (u.group_primary != NULL &&
-            (strcmp (u.group_primary, binfo[6]) && strcmp (u.group_primary, gbuf)))
+        if (gid != passwd_info->pw_gid)
         {
             CFUSR_SETBIT (*changemap, i_group);
             printf ("bit %d changed\n", i_group);
         }
-        Seq *glist = SeqNew(100, free);
-        int num = GroupGetUserMembership (puser, glist);
-        //printf ("The big %s versus %d[%s,%s] other groups\n", u.groups2_secondary, num,
-        //        glist[0], glist[1]);
-
-        /*TODO: fix differs fct */
-        if (u.groups2_secondary != NULL
-            && AreListsOfGroupsEqual (u.groups2_secondary, glist) == 0)
-        {
-            CFUSR_SETBIT (*changemap, i_groups);
-            printf ("bit %d changed\n", i_groups);
-        }
-        SeqDestroy(glist);
-        ////////////////////////////////////////////
     }
+    Seq *glist = SeqNew(100, free);
+    int num = GroupGetUserMembership (puser, glist);
+    //printf ("The big %s versus %d[%s,%s] other groups\n", u.groups2_secondary, num,
+    //        glist[0], glist[1]);
+
+    /*TODO: fix differs fct */
+    if (u.groups2_secondary != NULL
+        && AreListsOfGroupsEqual (u.groups2_secondary, glist) == 0)
+    {
+        CFUSR_SETBIT (*changemap, i_groups);
+        printf ("bit %d changed\n", i_groups);
+    }
+    SeqDestroy(glist);
+
+    if (group_info)
+    {
+        free(group_info);
+        free(group_buf);
+    }
+
+    ////////////////////////////////////////////
     if (*changemap == 0L)
     {
         return 0;
@@ -474,7 +496,7 @@ int DoCreateUser (char *puser, User u, enum cfopaction action)
     }
 
     printf ("cmd=[%s]\n", cmd);
-    if (action == cfa_warn)
+    if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to create user '%s'.", puser);
     }
@@ -503,7 +525,7 @@ int DoRemoveUser (char *puser, User u, enum cfopaction action)
     }
 
     printf ("cmd=[%s]\n", cmd);
-    if (action == cfa_warn)
+    if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to remove user '%s'.", puser);
     }
@@ -528,7 +550,7 @@ int DoModifyUser (char *puser, User u, unsigned long changemap, enum cfopaction 
 
     if (CFUSR_CHECKBIT (changemap, i_password) != 0)
     {
-        if (action == cfa_warn)
+        if (action == cfa_warn || DONTDO)
         {
             Log(LOG_LEVEL_NOTICE, "Need to change password for user '%s'.", puser);
         }
@@ -580,7 +602,7 @@ int DoModifyUser (char *puser, User u, unsigned long changemap, enum cfopaction 
     sprintf (cmd, "%s %s", cmd, puser);
 
     printf ("cmd=[%s]\n", cmd);
-    if (action == cfa_warn)
+    if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to update user attributes (command '%s').", cmd);
     }
@@ -599,12 +621,23 @@ void VerifyOneUsersPromise (char *puser, User u, int *result, enum cfopaction ac
     char pinfo[7][1024] = { 0 };
     char ginfo[7][1024] = { 0 };
 
+    int status;
+    struct passwd passwd_info_buf;
+    struct passwd *passwd_info;
+    char passwd_buf[CF_BUFSIZE];
+    status = getpwnam_r(puser, &passwd_info, passwd_buf, sizeof(passwd_buf), &passwd_result);
+    if (status)
+    {
+        Log(LOG_LEVEL_ERR, "Could not get information from user database. (getpwnam_r: '%s')", GetErrorStrFromCode(status));
+        return;
+    }
+
     if (u.policy == USER_STATE_PRESENT)
     {
-        if (VerifyIfUserExists (puser) == true)
+        if (passwd_info)
         {
             unsigned long int cmap = 0;
-            if (VerifyIfUserNeedsModifs (puser, u, binfo, pinfo, ginfo, &cmap)
+            if (VerifyIfUserNeedsModifs (puser, u, passwd_info, &cmap)
                 == 1)
             {
                 printf ("should act on cmap=%u\n", cmap);
@@ -638,7 +671,7 @@ void VerifyOneUsersPromise (char *puser, User u, int *result, enum cfopaction ac
     }
     else if (u.policy == USER_STATE_ABSENT)
     {
-        if (VerifyIfUserExists (puser) == true)
+        if (passwd_info)
         {
             res = DoRemoveUser (puser, u, action);
             if (!res)

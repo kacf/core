@@ -106,70 +106,70 @@ int AreListsOfGroupsEqual (char *groups1, Seq *groups2)
     }
 }
 
-int GroupGetUserMembership (char *user, Seq *result)
+/**
+ * Frontend to getgrent_r. Reallocates its arguments if needed.
+ * @param group_info Returned struct.
+ * @param group_buf Returned buffer.
+ * @param buf_size Returned size of buffer.
+ * @return True if successful, false if not, or if the list has reached the end.
+ */
+bool GetGroupEntry(struct group **group_info, char **group_buf, size_t *buf_size)
 {
-    int num = 0;
-    FILE *fp = fopen ("/etc/group", "r");
-    if (fp == NULL)
+    int status;
+    struct group *group_info_ptr = *group_info;
+    // Group lists can get quite large, so use a dynamic buffer.
+    while (true)
     {
-        printf ("cannot open /etc/group file\n");
-        return -1;
-    }
-    char line[1024];
-    while (fgets (line, 1024, fp) != NULL)
-    {
-        if (strstr (line, user) != NULL)
+        status = getgrent_r(*group_info, *group_buf, *buf_size, &group_info_ptr);
+        if (status == ERANGE)
         {
-            size_t len = -1;
-            len = strcspn (line, "\r\n");
-            if (len > 0)
+            // Too small buffer.
+            *buf_size *= 2;
+            // Cap at 50 MB, something has to be wrong if we go over that.
+            if (buf_size > 50000000)
             {
-                line[len] = '\0';
+                Log(LOG_LEVEL_ERR, "Could not get group information: %s\n", GetErrorStrFromCode(ENOMEM));
+                return false;
             }
-            //printf ("matched %s\n", 1 + strrchr (line, ':'));
-            char *s0 = 1 + strrchr (line, ':');
-            char *s = NULL;
-            char obuf[1024];
-            while ((s = strchr (s0, ',')) != NULL)
+            *group_buf = xrealloc(group_buf_ret, buf_size);
+            continue;
+        }
+        else if (status == ENOENT)
+        {
+            return false;
+        }
+        else
+        {
+            Log(LOG_LEVEL_ERR, "Could not get group information. (getgrgid_r: '%s')\n", GetErrorStrFromCode(status));
+            return false;
+        }
+
+        return true;
+    }
+}
+
+void GroupGetUserMembership (const char *user, Seq *result)
+{
+    struct group *group_info;
+
+    SeqClear(result);
+    setgrent();
+    do
+    {
+        
+        for (int i = 0; group_info->gr_mem[i] != NULL; i++)
+        {
+            if (strcmp(user, group_info->gr_mem[i]) == 0)
             {
-                //printf ("\tS0=%s[%u]\n", s0, s - s0);
-                if (!strncmp (s0, user, s - s0))
-                {
-                    //strncpy(obuf, s0, s - s0);
-                    //obuf[s - s0] = '\0';
-                    sscanf (line, "%[^:]:", obuf);
-                    SeqAppend(result, strdup(obuf));
-                    num++;
-                    //printf ("\t\tcool1\n");
-                }
-                s0 = s + 1;
-            }
-            //printf ("\tS0=%s[%u]\n", s0, strlen (s0));
-            if (!strcmp (s0, user))
-            {
-                //strcpy(obuf, s0);
-                sscanf (line, "%[^:]:", obuf);
-                SeqAppend(result, strdup(obuf));
-                num++;
-                //printf ("\t\tcool2\n");
+                SeqAdd(result, group_info->gr_name);
             }
         }
     }
-    fclose (fp);
-    return num;
+    endgrent();
 }
+
 
 #if 0
-void test_group_convert()
-{
-    char gbuf[100];
-    int res;
-    res = GroupConvert ("root", gbuf);
-    if(!strcmp(gbuf, "0")) {printf("yes\n");} else {printf("no\n");}
-    res = GroupConvert ("0", gbuf);
-    if(!strcmp(gbuf, "root")) {printf("yes\n");} else {printf("no\n");}
-
-}
 void test_group_membership()
 {
     Seq *result = SeqNew(100, free);
