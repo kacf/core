@@ -24,21 +24,23 @@
 
 #include <unicode.h>
 
-void ConvertFromCharToWChar(int16_t *dst, const char *src)
+void ConvertFromCharToWChar(int16_t *dst, const char *src, size_t size)
 {
     int c;
-    for (c = 0; src[c]; c++)
+    size--; // Room for '\0'.
+    for (c = 0; src[c] && c < size; c++)
     {
         dst[c] = (int16_t)src[c];
     }
     dst[c] = '\0';
 }
 
-bool ConvertFromWCharToChar(char *dst, const int16_t *src)
+bool ConvertFromWCharToChar(char *dst, const int16_t *src, size_t size)
 {
     bool clean = true;
     int c;
-    for (c = 0; src[c]; c++)
+    size--; // Room for '\0'.
+    for (c = 0; src[c] && c < size; c++)
     {
         // We only consider unsigned values.
         if (src[c] < 0 || src[c] >= 0x100)

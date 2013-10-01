@@ -31,11 +31,11 @@
  * Dumb conversion from 8-bit strings to 16-bit.
  *
  * Does not take locales or any special characters into account.
- * @param dst The destination string. It must be at least twice the size of src,
- *            including the terminating '\0' byte.
+ * @param dst The destination string.
  * @param src The source string.
+ * @param size The size of dst, in wchars.
  */
-void ConvertFromCharToWChar(int16_t *dst, const char *src);
+void ConvertFromCharToWChar(int16_t *dst, const char *src, size_t size);
 
 /**
  * Dumb conversion from 16-bit strings to 8-bit.
@@ -44,13 +44,13 @@ void ConvertFromCharToWChar(int16_t *dst, const char *src);
  * it's possible to lose information this way, this function returns a
  * value indicating whether the conversion was "clean" or whether information
  * was lost.
- * @param dst The destination string. It must be at least twice the size of src,
- *            including the terminating '\0' byte.
+ * @param dst The destination string.
  * @param src The source string.
+ * @param size The size of dst, in bytes.
  * @return Returns true if conversion was successful. Returns false if the
  *         16-bit string could not be converted cleanly to 8-bit. Note that dst
  *         will always contain a valid string.
  */
-bool ConvertFromWCharToChar(char *dst, const int16_t *src);
+bool ConvertFromWCharToChar(char *dst, const int16_t *src, size_t size);
 
 #endif // !UNICODE_H
