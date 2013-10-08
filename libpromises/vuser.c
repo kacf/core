@@ -197,22 +197,32 @@ int main ()
 }
 #endif
 
-bool AreListsOfGroupsEqual (const BufferList *groups1, const Rlist *groups2)
+bool AreListsOfGroupsEqual (const BufferList *groups1, const BufferList *groups2)
 {
+    if (BufferListCount(groups1) != BufferListCount(groups2))
+    {
+        return false;
+    }
+
     // Dumb comparison. O(n^2), but number of groups is never that large anyway.
     bool found = true;
     BufferListIterator *i1;
-    for (i1 = BufferListIteratorGet((BufferList *)groups1); i1; BufferListIteratorNext(i1))
+    printf("In %s at %i with counts %i and %i\n", __FUNCTION__, __LINE__, BufferListCount(groups1), BufferListCount(groups2));
+    for (i1 = BufferListIteratorGet(groups1); i1; i1 = (BufferListIteratorNext(i1) == 0) ? i1 : 0)
     {
         found = false;
-        for (const Rlist *i2 = groups2; i2; i2 = i2->next)
+        BufferListIterator *i2;
+        printf("In %s at %i\n", __FUNCTION__, __LINE__);
+        for (i2 = BufferListIteratorGet(groups2); i2; i2 = (BufferListIteratorNext(i2) == 0) ? i2 : 0)
         {
-            if (strcmp(BufferData(BufferListIteratorData(i1)), RvalScalarValue(i2->val)) == 0)
+            printf("In %s at %i, comapring \"%s\" and \"%s\"\n", __FUNCTION__, __LINE__, BufferData(BufferListIteratorData(i1)), BufferData(BufferListIteratorData(i2)));
+            if (strcmp(BufferData(BufferListIteratorData(i1)), BufferData(BufferListIteratorData(i2))) == 0)
             {
                 found = true;
                 break;
             }
         }
+        BufferListIteratorDestroy(&i2);
         if (!found)
         {
             break;
@@ -232,30 +242,91 @@ bool GroupGetUserMembership (const char *user, BufferList *result)
     {
         errno = 0;
         group_info = getgrent();
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
         if (!group_info)
         {
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
             if (errno)
             {
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
                 Log(LOG_LEVEL_ERR, "Error while getting group list. (getgrent: '%s')", GetErrorStr());
                 ret = false;
             }
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
             break;
         }
+        printf("In %s at %i, adding group name %s\n", __FUNCTION__, __LINE__, group_info->gr_name);
         for (int i = 0; group_info->gr_mem[i] != NULL; i++)
         {
             if (strcmp(user, group_info->gr_mem[i]) == 0)
             {
+                printf("In %s at %i, adding group name %s\n", __FUNCTION__, __LINE__, group_info->gr_name);
                 BufferListAppend(result, BufferNewFrom(group_info->gr_name, strlen(group_info->gr_name) + 1));
+                break;
             }
         }
     }
     endgrent();
 
     return ret;
+}
+
+static void TransformGidsToGroups(BufferList *list)
+{
+    BufferListIterator *i;
+    for (i = BufferListIteratorGet(list); i; i = (BufferListIteratorNext(i) == 0) ? i : 0)
+    {
+        const char *data = BufferData(BufferListIteratorData(i));
+        if (strlen(data) != strspn(data, "0123456789"))
+        {
+            // Cannot possibly be a gid.
+            continue;
+        }
+        // In groups vs gids, groups take precedence. So check if it exists.
+        errno = 0;
+        struct group *group_info = getgrnam(data);
+        if (!group_info)
+        {
+            switch (errno)
+            {
+            case 0:
+            case ENOENT:
+            case EBADF:
+            case ESRCH:
+            case EWOULDBLOCK:
+            case EPERM:
+                // POSIX is apparently ambiguous here. All values mean "not found".
+                errno = 0;
+                group_info = getgrgid(atoi(data));
+                if (!group_info)
+                {
+                    switch (errno)
+                    {
+                    case 0:
+                    case ENOENT:
+                    case EBADF:
+                    case ESRCH:
+                    case EWOULDBLOCK:
+                    case EPERM:
+                        // POSIX is apparently ambiguous here. All values mean "not found".
+                        //
+                        // Neither group nor gid is found. This will lead to an error later, but we don't
+                        // handle that here.
+                        break;
+                    default:
+                        Log(LOG_LEVEL_ERR, "Error while checking group name '%s'. (getgrgid: '%s')", data, GetErrorStr());
+                        return;
+                    }
+                }
+                else
+                {
+                    // Replace gid with group name.
+                    BufferSet(BufferListIteratorData(i), group_info->gr_name, strlen(group_info->gr_name) + 1);
+                }
+                break;
+            default:
+                Log(LOG_LEVEL_ERR, "Error while checking group name '%s'. (getgrnam: '%s')", data, GetErrorStr());
+                return;
+            }
+        }
+    }
+    BufferListIteratorDestroy(&i);
 }
 
 int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_info,
@@ -321,19 +392,26 @@ int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_in
             CFUSR_SETBIT (*changemap, i_group);
         }
     }
-    BufferList *glist = BufferListNew();
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
-    if (!GroupGetUserMembership (puser, glist))
+    if (u.groups_secondary != NULL)
     {
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
-        CFUSR_SETBIT (*changemap, i_groups);
+        BufferList *wanted_groups = BufferListNew();
+        for (Rlist *ptr = u.groups_secondary; ptr; ptr = ptr->next)
+        {
+            BufferListAppend(wanted_groups, BufferNewFrom(RvalScalarValue(ptr->val), strlen(RvalScalarValue(ptr->val)) + 1));
+        }
+        TransformGidsToGroups(wanted_groups);
+        BufferList *current_groups = BufferListNew();
+        if (!GroupGetUserMembership (puser, current_groups))
+        {
+            CFUSR_SETBIT (*changemap, i_groups);
+        }
+        else if (!AreListsOfGroupsEqual (current_groups, wanted_groups))
+        {
+            CFUSR_SETBIT (*changemap, i_groups);
+        }
+        BufferListDestroy(&current_groups);
+        BufferListDestroy(&wanted_groups);
     }
-    else if (u.groups_secondary != NULL
-             && AreListsOfGroupsEqual (glist, u.groups_secondary) == 0)
-    {
-        CFUSR_SETBIT (*changemap, i_groups);
-    }
-    BufferListDestroy(&glist);
 
     ////////////////////////////////////////////
     if (*changemap == 0)
