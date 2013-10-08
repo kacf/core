@@ -25,6 +25,7 @@ bundle agent init
       uid => "8765",
       group_primary => "3",
       groups_secondary => { "bin" },
+      home_dir => "/johns_old_home_dir",
       shell => "$(G.cat)",
       description => "Good user";
 }
@@ -51,6 +52,7 @@ bundle agent test
       # "2" is "bin" on most systems.
       group_primary => "2",
       groups_secondary => { "sys" },
+      home_dir => "/johns_home_dir",
       shell => "$(G.echo)",
       description => "$(desc_string)";
 }
@@ -74,7 +76,7 @@ bundle agent check
     "hash" string => escape("$(init.hash)");
 
   classes:
-    "passwd_ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:8765:3:Good user:$(G.cat)", "/etc/passwd"));
+    "passwd_ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:8765:3:Good user:/johns_old_home_dir:$(G.cat)", "/etc/passwd"));
     "bin_group_ok" not => strcmp("0", countlinesmatching("bin:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
     "sys_group_ok" expression => strcmp("0", countlinesmatching("sys:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
     "shadow_ok" not => strcmp("0", countlinesmatching("johndoe:$(hash):.*", "/etc/shadow"));

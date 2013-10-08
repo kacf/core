@@ -65,7 +65,7 @@ body classes check_classes_body
 bundle agent check
 {
   files:
-    "$(G.testfile)"
+    "$(G.testfile)asd"
       perms => check_perms_body,
       classes => check_classes_body;
 

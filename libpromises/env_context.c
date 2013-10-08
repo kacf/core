@@ -1680,32 +1680,42 @@ static void SetPromiseOutcomeClasses(PromiseResult status, EvalContext *ctx, con
     switch (status)
     {
     case PROMISE_RESULT_CHANGE:
+        printf("In %s at %i\n", __FUNCTION__, __LINE__);
+        for (Rlist *i = dc.change; i; i = i->next)
+        {
+            printf("In %s at %i class = %s\n", __FUNCTION__, __LINE__, RvalScalarValue(i->val));
+        }
         add_classes = dc.change;
         del_classes = dc.del_change;
         break;
 
     case PROMISE_RESULT_TIMEOUT:
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
         add_classes = dc.timeout;
         del_classes = dc.del_notkept;
         break;
 
     case PROMISE_RESULT_WARN:
     case PROMISE_RESULT_FAIL:
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
         add_classes = dc.failure;
         del_classes = dc.del_notkept;
         break;
 
     case PROMISE_RESULT_DENIED:
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
         add_classes = dc.denied;
         del_classes = dc.del_notkept;
         break;
 
     case PROMISE_RESULT_INTERRUPTED:
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
         add_classes = dc.interrupt;
         del_classes = dc.del_notkept;
         break;
 
     case PROMISE_RESULT_NOOP:
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
         add_classes = dc.kept;
         del_classes = dc.del_kept;
         break;

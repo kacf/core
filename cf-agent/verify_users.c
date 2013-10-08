@@ -77,8 +77,6 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
 
     PromiseBanner(pp);
 
-// Now verify the package itself
-
     snprintf(lockname, CF_BUFSIZE - 1, "user-%s-%d", pp->promiser, a.users.policy);
 
     thislock = AcquireLock(ctx, lockname, VUQNAME, CFSTARTTIME, a.transaction, pp, false);
@@ -90,6 +88,7 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
 
     PromiseResult result;
     VerifyOneUsersPromise(pp->promiser, a.users, &result, a.transaction.action);
+    printf("In %s at %i result = %c\n", __FUNCTION__, __LINE__, result);
 
     switch (result) {
     case PROMISE_RESULT_NOOP:

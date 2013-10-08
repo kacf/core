@@ -22,7 +22,7 @@
 
 #define CFUSR_CHECKBIT(v,p) ((v) & (1UL << (p)))
 #define CFUSR_SETBIT(v,p)   ((v)   |= ((1UL) << (p)))
-#define CFUSR_CLEARBIT(v,p) ((v) &= ((1UL) << (p)))
+#define CFUSR_CLEARBIT(v,p) ((v) &= ~((1UL) << (p)))
 
 typedef enum
 {
@@ -639,7 +639,8 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
     {
         Log(LOG_LEVEL_NOTICE, "Need to update user attributes (command '%s').", cmd);
     }
-    else
+    // If password was the only thing changed, don't run the command.
+    else if (CFUSR_CLEARBIT(changemap, i_password) != 0)
     {
         if (strlen(cmd) >= sizeof(cmd) - 1)
         {

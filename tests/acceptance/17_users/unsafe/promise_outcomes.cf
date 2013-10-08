@@ -58,20 +58,21 @@ body password init_password
 bundle agent test
 {
   users:
+   !ok::
     "absent_keep"
-      classes => set_class_if_kept("$(this.promiser)"),
+      classes => set_classes_kept_repaired("absent_keep", "not_absent_keep"),
       policy => "absent";
     "absent_repair"
-      classes => set_class_if_repaired("$(this.promiser)"),
+      classes => set_classes_kept_repaired("not_absent_repair", "absent_repair"),
       policy => "absent";
     "present_keep"
-      classes => set_class_if_kept("$(this.promiser)"),
+      classes => set_classes_kept_repaired("present_keep", "not_present_keep"),
       policy => "present";
     "present_repair"
-      classes => set_class_if_repaired("$(this.promiser)"),
+      classes => set_classes_kept_repaired("not_present_repair", "present_repair"),
       policy => "present";
     "attributes_keep"
-      classes => set_class_if_kept("$(this.promiser)"),
+      classes => set_classes_kept_repaired("attributes_keep", "not_attributes_keep"),
       policy => "present",
       uid => "9878",
       # "2" is "bin" on most systems.
@@ -80,7 +81,7 @@ bundle agent test
       shell => "$(G.echo)",
       description => "Description";
     "attributes_repair"
-      classes => set_class_if_repaired("$(this.promiser)"),
+      classes => set_classes_kept_repaired("not_attributes_repair", "attributes_repair"),
       policy => "present",
       uid => "9877",
       # "2" is "bin" on most systems.
@@ -89,40 +90,62 @@ bundle agent test
       shell => "$(G.cat)",
       description => "Description";
     "password_keep"
-      classes => set_class_if_kept("$(this.promiser)"),
+      classes => set_classes_kept_repaired("password_keep", "not_password_keep"),
       policy => "present",
       password => init_password;
     "password_repair"
-      classes => set_class_if_repaired("$(this.promiser)"),
+      classes => set_classes_kept_repaired("not_password_repair", "password_repair"),
       policy => "present",
       password => test_password;
 
 
   classes:
-    "ok" and => { "absent_keep", "absent_repair", "present_keep", "present_repair",
+    "and_ok" and => { "absent_keep", "absent_repair", "present_keep", "present_repair",
                   "attributes_keep", "attributes_repair", "password_keep", "password_repair",  };
+    "not_ok" or => { "not_absent_keep", "not_absent_repair", "not_present_keep", "not_present_repair",
+                  "not_attributes_keep", "not_attributes_repair", "not_password_keep", "not_password_repair",  };
+
+    "ok" and => { "and_ok", "!not_ok" };
+    "fail" or => { "!and_ok", "not_ok" };
 
   reports:
     !absent_keep.DEBUG::
-      "absent_keep is NOT set";
+      "absent_keep is NOT set, but should be";
     !absent_repair.DEBUG::
-      "absent_repair is NOT set";
+      "absent_repair is NOT set, but should be";
     !present_keep.DEBUG::
-      "present_keep is NOT set";
+      "present_keep is NOT set, but should be";
     !present_repair.DEBUG::
-      "present_repair is NOT set";
+      "present_repair is NOT set, but should be";
     !attributes_keep.DEBUG::
-      "attributes_keep is NOT set";
+      "attributes_keep is NOT set, but should be";
     !attributes_repair.DEBUG::
-      "attributes_repair is NOT set";
+      "attributes_repair is NOT set, but should be";
     !password_keep.DEBUG::
-      "password_keep is NOT set";
+      "password_keep is NOT set, but should be";
     !password_repair.DEBUG::
-      "password_repair is NOT set";
+      "password_repair is NOT set, but should be";
+
+    not_absent_keep.DEBUG::
+      "not_absent_keep is SET, but shouldn't be";
+    not_absent_repair.DEBUG::
+      "not_absent_repair is SET, but shouldn't be";
+    not_present_keep.DEBUG::
+      "not_present_keep is SET, but shouldn't be";
+    not_present_repair.DEBUG::
+      "not_present_repair is SET, but shouldn't be";
+    not_attributes_keep.DEBUG::
+      "not_attributes_keep is SET, but shouldn't be";
+    not_attributes_repair.DEBUG::
+      "not_attributes_repair is SET, but shouldn't be";
+    not_password_keep.DEBUG::
+      "not_password_keep is SET, but shouldn't be";
+    not_password_repair.DEBUG::
+      "not_password_repair is SET, but shouldn't be";
 
     ok::
       "$(this.promise_filename) Pass";
-    !ok::
+    failasdasd::
       "$(this.promise_filename) FAIL";
 }
 
@@ -132,14 +155,10 @@ body password test_password
   data => "TestPassword";
 }
 
-body classes set_class_if_kept(x)
+body classes set_classes_kept_repaired(x, y)
 {
   promise_kept => { "$(x)" };
-}
-
-body classes set_class_if_repaired(x)
-{
-  promise_repaired => { "$(x)" };
+  promise_repaired => { "$(y)" };
 }
 
 #######################################################
