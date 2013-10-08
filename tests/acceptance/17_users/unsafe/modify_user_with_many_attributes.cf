@@ -48,6 +48,7 @@ bundle agent test
       # "2" is "bin" on most systems.
       group_primary => "2",
       groups_secondary => { "sys" },
+      home_dir => "/user_directories/johndoe",
       shell => "$(G.echo)",
       description => "$(desc_string)";
 }
@@ -66,7 +67,7 @@ bundle agent check
     "hash" string => escape("$(test.hash)");
 
   classes:
-    "passwd_ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:9876:2:$(test.desc_string):$(G.echo)", "/etc/passwd"));
+    "passwd_ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:9876:2:$(test.desc_string):/user_directories/johndoe:$(G.echo)", "/etc/passwd"));
     "bin_group_ok" not => strcmp("0", countlinesmatching("sys:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
     "sys_group_ok" expression => strcmp("0", countlinesmatching("bin:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
     "shadow_ok" not => strcmp("0", countlinesmatching("johndoe:$(hash):.*", "/etc/shadow"));

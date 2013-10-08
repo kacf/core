@@ -25,7 +25,7 @@ bundle agent init
       policy => "absent";
     "attributes_keep"
       policy => "present",
-      uid => "9876",
+      uid => "9878",
       # "2" is "bin" on most systems.
       group_primary => "2",
       groups_secondary => { "sys" },
@@ -73,7 +73,7 @@ bundle agent test
     "attributes_keep"
       classes => set_class_if_kept("$(this.promiser)"),
       policy => "present",
-      uid => "9876",
+      uid => "9878",
       # "2" is "bin" on most systems.
       group_primary => "2",
       groups_secondary => { "sys" },

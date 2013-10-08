@@ -88,31 +88,26 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
         return;
     }
 
-    /*Do things*/
-    //cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_FAIL, pp, a, "KO");
-#if 0
-    printf("pp->promiser=[%s]\n", pp->promiser);
-    printf("a ->policy   =[%d]\n", a.users.policy);
-    printf("a ->uid     =[%s]\n", a.users.uid);
-    printf("a ->group_primary =[%s]\n", a.users.group_primary);
-#endif
-
-    int result;
+    PromiseResult result;
     VerifyOneUsersPromise(pp->promiser, a.users, &result, a.transaction.action);
 
     switch (result) {
-         case CFUSR_KEPT:
-             cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_NOOP, pp, a, "NOOP");
-             break;
-         case CFUSR_NOTKEPT:
-             //cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_INTERRUPTED, pp, a, "KO");
-             cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_FAIL, pp, a, "KO");
-             break;
-         case CFUSR_REPAIRED:
-             cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_CHANGE, pp, a, "OK");
-             break;
-         default:
-             printf("Problem: result is unknwon\n");
+    case PROMISE_RESULT_NOOP:
+        cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_NOOP, pp, a, "User promise kept");
+        break;
+    case PROMISE_RESULT_FAIL:
+    case PROMISE_RESULT_DENIED:
+    case PROMISE_RESULT_TIMEOUT:
+    case PROMISE_RESULT_INTERRUPTED:
+    case PROMISE_RESULT_WARN:
+        cfPS(ctx, LOG_LEVEL_ERR, result, pp, a, "KO");
+        break;
+    case PROMISE_RESULT_CHANGE:
+        cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_CHANGE, pp, a, "OK");
+        break;
+    default:
+        ProgrammingError("Unknown promise result");
+        break;
     }
  
 

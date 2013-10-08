@@ -32,8 +32,7 @@ libutils_la_SOURCES = \
 	file_lib.c file_lib.h \
 	man.c man.h \
 	rb-tree.c rb-tree.h \
-	mustache.c mustache.h \
-	pwcrypt.c pwcrypt.h
+	mustache.c mustache.h
 
 CLEANFILES = *.gcno *.gcda
 

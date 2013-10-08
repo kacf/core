@@ -1526,7 +1526,6 @@ typedef struct
     bool create_home;
     char *group_primary;
     Rlist *groups_secondary;
-    char *groups2_secondary;
     char *home_dir;
     char *shell;
 } User;

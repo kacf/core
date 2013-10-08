@@ -1,10 +1,22 @@
+#include <cf3.defs.h>
+#include <bufferlist.h>
+
 #include <stdio.h>
 #include <string.h>
 
 #include <security/pam_appl.h>
 
 #include <pwcrypt.h>
-#include <users_groups.h>
+#include <sys/types.h>
+#include <grp.h>
+
+// TODO REMOVE
+#define HAVE_SHADOW_H
+#define HAVE_GETSPNAM
+
+#ifdef HAVE_SHADOW_H
+# include <shadow.h>
+#endif
 
 //#define STANDALONE 1
 
@@ -12,41 +24,9 @@
 #define CFUSR_SETBIT(v,p)   ((v)   |= ((1UL) << (p)))
 #define CFUSR_CLEARBIT(v,p) ((v) &= ((1UL) << (p)))
 
-#if STANDALONE
-typedef enum
-{
-    false,
-    true
-} bool;
-
-typedef enum
-{
-    USER_STATE_PRESENT,
-    USER_STATE_ABSENT,
-    USER_STATE_LOCKED,
-    USER_STATE_NONE
-} UserState;
-
-typedef struct
-{
-    UserState policy;
-    char *uid;
-    char *user;
-    char *password;
-    char *description;
-    bool create_home;
-    char *group_primary;
-    char *groups2_secondary;
-    char *home_dir;
-    char *shell;
-    bool remove;
-} User;
-#endif
-
 typedef enum
 {
     i_uid,
-    i_user,
     i_password,
     i_comment,
     i_group,
@@ -58,11 +38,6 @@ typedef enum
 #define CFUSR_CMDADD "/usr/sbin/useradd"
 #define CFUSR_CMDDEL "/usr/sbin/userdel"
 #define CFUSR_CMDMOD "/usr/sbin/usermod"
-#define CFUSR_PWFILE "/etc/shadow"
-
-#define CFUSR_KEPT      0
-#define CFUSR_REPAIRED  1
-#define CFUSR_NOTKEPT   2
 
 static int PasswordSupplier(int num_msg, const struct pam_message **msg,
            struct pam_response **resp, void *appdata_ptr)
@@ -95,24 +70,32 @@ static bool IsPasswordCorrect(const char *puser, const char* password, PasswordF
 
     if (format == PASSWORD_FORMAT_HASH)
     {
+#ifdef HAVE_GETSPNAM
         // If the hash is very short, it's probably a stub. Try getting the shadow password instead.
         if (strlen(passwd_info->pw_passwd) <= 4)
         {
-            int status;
-            struct spwd spwd_info_buf;
             struct spwd *spwd_info;
-            char spwd_buf[CF_BUFSIZE];
-            status = getspnam_r(puser, &spwd_info_buf, spwd_buf, sizeof(spwd_buf), &spwd_info);
-            if (status)
+            errno = 0;
+            spwd_info = getspnam(puser);
+            if (!spwd_info)
             {
-                Log(LOG_LEVEL_ERR, "Could not get information from user shadow database. (getspnam_r: '%s')", GetErrorStrFromCode(status));
-                return false;
+                if (errno)
+                {
+                    Log(LOG_LEVEL_ERR, "Could not get information from user shadow database. (getspnam: '%s')", GetErrorStr());
+                    return false;
+                }
+                else
+                {
+                    Log(LOG_LEVEL_ERR, "Could not find user when checking password.");
+                    return false;
+                }
             }
-            else if (swpd_info)
+            else if (spwd_info)
             {
                 return (strcmp(password, spwd_info->sp_pwdp) == 0);
             }
         }
+#endif // HAVE_GETSPNAM
         return (strcmp(password, passwd_info->pw_passwd) == 0);
     }
     else if (format != PASSWORD_FORMAT_PLAINTEXT)
@@ -168,7 +151,7 @@ static int ChangePassword(const char *puser, const char *password, PasswordForma
     if (!cmd)
     {
         Log(LOG_LEVEL_ERR, "Could not launch password changing command '%s': %s.", cmd_str, GetErrorStr());
-        return CFUSR_NOTKEPT;
+        return PROMISE_RESULT_FAIL;
     }
 
     // String lengths plus a ':' and a '\n', but not including '\0'.
@@ -189,142 +172,16 @@ static int ChangePassword(const char *puser, const char *password, PasswordForma
         }
         Log(LOG_LEVEL_ERR, "Could not write password to password changing command '%s': %s.", cmd_str, error_str);
         cf_pclose(cmd);
-        return CFUSR_NOTKEPT;
+        return PROMISE_RESULT_FAIL;
     }
     status = cf_pclose(cmd);
     if (status)
     {
         Log(LOG_LEVEL_ERR, "'%s' returned non-zero status: %i\n", cmd_str, status);
-        return CFUSR_NOTKEPT;
+        return PROMISE_RESULT_FAIL;
     }
 
-    return CFUSR_REPAIRED;
-}
-
-bool ReadSimpleFile (char *fname, const char *user, char (*entries)[1024])
-{
-    char line[2048];
-    char *s = NULL;
-    FILE *fp;
-    fp = fopen (fname, "r");
-    if (fp == NULL)
-    {
-        printf ("cannot open file %s\n", fname);
-        goto clean;
-    }
-    while (fgets (line, 2048, fp) != NULL)
-    {
-        char *s2 = NULL;
-        int j;
-        if (strncmp (line, user, strlen (user)) == 0
-            && line[strlen (user)] == ':')
-        {
-            printf ("LINE=%s for user %s\n", line, user);
-            s = line;
-            j = 0;
-            while ((s2 = strchr (s, ':')) != NULL)
-            {
-                strncpy (entries[j], s, s2 - s);
-                entries[j][s2 - s] = '\0';
-                //printf("S=[%s]\n", entries[j]);
-                s = s2 + 1;
-                j++;
-            }
-        }
-        if (s != NULL)
-        {
-            s2 = strchr (s, '\n');
-            if (s2 != NULL)
-            {
-                s[s2 - s] = '\0';
-                strcpy (entries[j], s);
-                //printf("S=[%s]\n", s);
-            }
-        }
-    }
-    fclose (fp);
-    return true;
-clean:
-    return false;
-}
-
-bool ReadComplicatedFile (char *fname, const char *user,
-                          char (*entries)[1024], int key_idx)
-{
-    char line[2048];
-    char *s = NULL;
-    FILE *fp;
-    fp = fopen (fname, "r");
-    if (fp == NULL)
-    {
-        printf ("cannot open file %s\n", fname);
-        goto clean;
-    }
-    while (fgets (line, 2048, fp) != NULL)
-    {
-        char *s2 = NULL;
-        int j;
-        s = line;
-        //////////////
-        char tmp[1024] = "";
-        j = key_idx + 1;
-        //printf("L\n");
-        while ((s2 = strchr (s, ':')) != NULL && j != 0)
-        {
-            strncpy (tmp, s, s2 - s);
-            tmp[s2 - s] = '\0';
-            //printf("S%d=[%s]\n", j, tmp);
-            s = s2 + 1;
-            j--;
-        }
-        //if(s)   printf("S(j=%d)=[%s]\n", j, tmp);
-        //////////////
-        if (j == 0 && (strcmp (tmp, user) == 0))
-        {
-            //printf("Found[%s]\n", line);
-            s = line;
-            j = 0;
-            while ((s2 = strchr (s, ':')) != NULL)
-            {
-                strncpy (entries[j], s, s2 - s);
-                entries[j][s2 - s] = '\0';
-                //printf("S%d=[%s]\n", j, entries[j]);
-                s = s2 + 1;
-                j++;
-            }
-            if (s != NULL)
-            {
-                s2 = strchr (s, '\n');
-                if (s2 != NULL)
-                {
-                    s[s2 - s] = '\0';
-                    strcpy (entries[j], s);
-                    //printf("S=[%s]\n", s);
-                }
-            }
-
-        }
-    }
-    fclose (fp);
-    return true;
-clean:
-    return false;
-}
-
-bool FetchUserBasicInfo (const char *user, char (*entries)[1024])
-{
-    return ReadSimpleFile ("/etc/passwd", user, entries);
-}
-
-bool FetchUserPasswdInfo (const char *user, char (*entries)[1024])
-{
-    //1. md5 5. sha256 6. sha512
-    return ReadSimpleFile ("/etc/shadow", user, entries);
-}
-
-bool FetchUserGroupInfo (const char *group, char (*entries)[1024])
-{
-    return ReadComplicatedFile ("/etc/group", group, entries, 2 /*3rd */ );
+    return PROMISE_RESULT_CHANGE;
 }
 
 #if 0
@@ -340,44 +197,92 @@ int main ()
 }
 #endif
 
-int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_info,
-                             unsigned long int *changemap)
+bool AreListsOfGroupsEqual (const BufferList *groups1, const Rlist *groups2)
 {
-    bool res;
-    res = FetchUserBasicInfo (puser, binfo);
-    res = FetchUserPasswdInfo (puser, pinfo);
-    printf ("binfo[3rd]='%s'\n", binfo[3]);
-    printf ("pinfo[1st]='%s'\n", pinfo[1]);
-    res = FetchUserGroupInfo (binfo[3] /*4th */ , ginfo);
-    printf ("ginfo[1st]='%s'\n", ginfo[0]);
+    // Dumb comparison. O(n^2), but number of groups is never that large anyway.
+    bool found = true;
+    BufferListIterator *i1;
+    for (i1 = BufferListIteratorGet((BufferList *)groups1); i1; BufferListIteratorNext(i1))
+    {
+        found = false;
+        for (const Rlist *i2 = groups2; i2; i2 = i2->next)
+        {
+            if (strcmp(BufferData(BufferListIteratorData(i1)), RvalScalarValue(i2->val)) == 0)
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            break;
+        }
+    }
+    BufferListIteratorDestroy(&i1);
+    return found;
+}
 
+bool GroupGetUserMembership (const char *user, BufferList *result)
+{
+    bool ret = true;
+    struct group *group_info;
+
+    setgrent();
+    while (true)
+    {
+        errno = 0;
+        group_info = getgrent();
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+        if (!group_info)
+        {
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+            if (errno)
+            {
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+                Log(LOG_LEVEL_ERR, "Error while getting group list. (getgrent: '%s')", GetErrorStr());
+                ret = false;
+            }
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+            break;
+        }
+        for (int i = 0; group_info->gr_mem[i] != NULL; i++)
+        {
+            if (strcmp(user, group_info->gr_mem[i]) == 0)
+            {
+                BufferListAppend(result, BufferNewFrom(group_info->gr_name, strlen(group_info->gr_name) + 1));
+            }
+        }
+    }
+    endgrent();
+
+    return ret;
+}
+
+int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_info,
+                             uint32_t *changemap)
+{
     //name;pass;id;grp;comment;home;shell
     if (u.description != NULL && strcmp (u.description, passwd_info->pw_gecos))
     {
         CFUSR_SETBIT (*changemap, i_comment);
-        printf ("bit comment %d changed\n", i_comment);
     }
     if (u.uid != NULL && (atoi (u.uid) != passwd_info->pw_uid))
     {
         CFUSR_SETBIT (*changemap, i_uid);
-        printf ("bit %d changed\n", i_uid);
     }
     if (u.home_dir != NULL && strcmp (u.home_dir, passwd_info->pw_dir))
     {
         CFUSR_SETBIT (*changemap, i_home);
-        printf ("bit %d changed\n", i_home);
     }
     if (u.shell != NULL && strcmp (u.shell, passwd_info->pw_shell))
     {
         CFUSR_SETBIT (*changemap, i_shell);
-        printf ("bit %d changed\n", i_shell);
     }
     if (u.password != NULL && strcmp (u.password, ""))
     {
         if (!IsPasswordCorrect(puser, u.password, u.password_format, passwd_info))
         {
             CFUSR_SETBIT (*changemap, i_password);
-            printf ("bit %d changed\n", i_password);
         }
     }
 
@@ -414,31 +319,24 @@ int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_in
         if (gid != passwd_info->pw_gid)
         {
             CFUSR_SETBIT (*changemap, i_group);
-            printf ("bit %d changed\n", i_group);
         }
     }
-    Seq *glist = SeqNew(100, free);
-    int num = GroupGetUserMembership (puser, glist);
-    //printf ("The big %s versus %d[%s,%s] other groups\n", u.groups2_secondary, num,
-    //        glist[0], glist[1]);
-
-    /*TODO: fix differs fct */
-    if (u.groups2_secondary != NULL
-        && AreListsOfGroupsEqual (u.groups2_secondary, glist) == 0)
+    BufferList *glist = BufferListNew();
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+    if (!GroupGetUserMembership (puser, glist))
+    {
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+        CFUSR_SETBIT (*changemap, i_groups);
+    }
+    else if (u.groups_secondary != NULL
+             && AreListsOfGroupsEqual (glist, u.groups_secondary) == 0)
     {
         CFUSR_SETBIT (*changemap, i_groups);
-        printf ("bit %d changed\n", i_groups);
     }
-    SeqDestroy(glist);
-
-    if (group_info)
-    {
-        free(group_info);
-        free(group_buf);
-    }
+    BufferListDestroy(&glist);
 
     ////////////////////////////////////////////
-    if (*changemap == 0L)
+    if (*changemap == 0)
     {
         return 0;
     }
@@ -450,7 +348,7 @@ int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_in
 
 int DoCreateUser (char *puser, User u, enum cfopaction action)
 {
-    char cmd[4096];
+    char cmd[CF_BUFSIZE];
     if (puser == NULL || !strcmp (puser, ""))
     {
         return -1;
@@ -459,50 +357,79 @@ int DoCreateUser (char *puser, User u, enum cfopaction action)
 
     if (u.uid != NULL && strcmp (u.uid, ""))
     {
-        sprintf (cmd, "%s -u %d", cmd, atoi (u.uid));
+        StringAppend(cmd, " -u \"", sizeof(cmd));
+        StringAppend(cmd, u.uid, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
 
     if (u.description != NULL && strcmp (u.description, ""))
     {
-        sprintf (cmd, "%s -c \"%s\"", cmd, u.description);
+        StringAppend(cmd, " -c \"", sizeof(cmd));
+        StringAppend(cmd, u.description, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
 
     if (u.create_home == true)
     {
-        sprintf (cmd, "%s -m", cmd);
+        StringAppend(cmd, " -m", sizeof(cmd));
     }
     if (u.group_primary != NULL && strcmp (u.group_primary, ""))
     {
-        //TODO: check that group exists
-        sprintf (cmd, "%s -g \"%s\"", cmd, u.group_primary);
+        // TODO: Should check that group exists
+        StringAppend(cmd, " -g \"", sizeof(cmd));
+        StringAppend(cmd, u.group_primary, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
-    if (u.groups2_secondary != NULL && strcmp (u.groups2_secondary, ""))
+    if (u.groups_secondary != NULL)
     {
-        //TODO: check that groups exists
-        sprintf (cmd, "%s -G \"%s\"", cmd, u.groups2_secondary);
+        // TODO: Should check that groups exist
+        StringAppend(cmd, " -G \"", sizeof(cmd));
+        char sep[2] = { '\0', '\0' };
+        for (Rlist *i = u.groups_secondary; i; i = i->next)
+        {
+            StringAppend(cmd, sep, sizeof(cmd));
+            StringAppend(cmd, RvalScalarValue(i->val), sizeof(cmd));
+            sep[0] = ',';
+        }
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
     if (u.home_dir != NULL && strcmp (u.home_dir, ""))
     {
-        sprintf (cmd, "%s -d \"%s\"", cmd, u.home_dir);
+        StringAppend(cmd, " -d \"", sizeof(cmd));
+        StringAppend(cmd, u.home_dir, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
     if (u.shell != NULL && strcmp (u.shell, ""))
     {
-        sprintf (cmd, "%s -s \"%s\"", cmd, u.shell);
+        StringAppend(cmd, " -s \"", sizeof(cmd));
+        StringAppend(cmd, u.shell, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
-    bool remove;
-    if (strcmp (puser, ""))
-    {
-        sprintf (cmd, "%s %s", cmd, puser);
-    }
+    StringAppend(cmd, " ", sizeof(cmd));
+    StringAppend(cmd, puser, sizeof(cmd));
+    printf("In %s at %i, cmd = \"%s\"\n", __FUNCTION__, __LINE__, cmd);
 
-    printf ("cmd=[%s]\n", cmd);
     if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to create user '%s'.", puser);
     }
     else
     {
-        system(cmd);
+        if (strlen(cmd) >= sizeof(cmd) - 1)
+        {
+            // Instead of checking every string call above, assume that a maxed out
+            // string length overflowed the string.
+            Log(LOG_LEVEL_ERR, "Command line too long while creating user '%s'", puser);
+            return 1;
+        }
+
+        int status;
+        status = system(cmd);
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        {
+            Log(LOG_LEVEL_ERR, "Command returned error while creating user '%s'. (Command line: '%s')", puser, cmd);
+            return 1;
+        }
 
         if (u.password != NULL && strcmp (u.password, ""))
         {
@@ -513,40 +440,54 @@ int DoCreateUser (char *puser, User u, enum cfopaction action)
     return 0;
 }
 
-int DoRemoveUser (char *puser, User u, enum cfopaction action)
+int DoRemoveUser (char *puser, enum cfopaction action)
 {
-    char cmd[4096];
+    char cmd[CF_BUFSIZE];
 
     strcpy (cmd, CFUSR_CMDDEL);
 
-    if (strcmp (puser, ""))
-    {
-        sprintf (cmd, "%s %s", cmd, puser);
-    }
+    StringAppend(cmd, " ", sizeof(cmd));
+    StringAppend(cmd, puser, sizeof(cmd));
 
-    printf ("cmd=[%s]\n", cmd);
     if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to remove user '%s'.", puser);
     }
     else
     {
-        system(cmd);
+        if (strlen(cmd) >= sizeof(cmd) - 1)
+        {
+            // Instead of checking every string call above, assume that a maxed out
+            // string length overflowed the string.
+            Log(LOG_LEVEL_ERR, "Command line too long while removing user '%s'", puser);
+            return 1;
+        }
+
+        int status;
+        status = system(cmd);
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        {
+            Log(LOG_LEVEL_ERR, "Command returned error while removing user '%s'. (Command line: '%s')", puser, cmd);
+            return 1;
+        }
     }
     return 0;
 }
 
-int DoModifyUser (char *puser, User u, unsigned long changemap, enum cfopaction action)
+int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction action)
 {
-    char cmd[4096];
+    char cmd[CF_BUFSIZE];
 
     strcpy (cmd, CFUSR_CMDMOD);
 
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_uid) != 0)
     {
-        //3rd
-        sprintf (cmd, "%s -u %d", cmd, atoi (u.uid));
+        StringAppend(cmd, " -u \"", sizeof(cmd));
+        StringAppend(cmd, u.uid, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
 
     if (CFUSR_CHECKBIT (changemap, i_password) != 0)
     {
@@ -559,76 +500,98 @@ int DoModifyUser (char *puser, User u, unsigned long changemap, enum cfopaction 
             ChangePassword(puser, u.password, u.password_format);
         }
     }
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
 
     if (CFUSR_CHECKBIT (changemap, i_comment) != 0)
     {
         if (strcmp (u.description, ""))
         {
-            //5th
-            sprintf (cmd, "%s -c \"%s\"", cmd, u.description);
+            StringAppend(cmd, " -c \"", sizeof(cmd));
+            StringAppend(cmd, u.description, sizeof(cmd));
+            StringAppend(cmd, "\"", sizeof(cmd));
         }
     }
 
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_group) != 0)
     {
-        //4th
-        sprintf (cmd, "%s -g \"%s\"", cmd, u.group_primary);
+        StringAppend(cmd, " -g \"", sizeof(cmd));
+        StringAppend(cmd, u.group_primary, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
 
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_groups) != 0)
     {
-        //TODO: check that groups (id forms and name forms) differ (4th in /etc/group)
-        sprintf (cmd, "%s -G \"%s\"", cmd, u.groups2_secondary);
+        StringAppend(cmd, " -G \"", sizeof(cmd));
+        char sep[2] = { '\0', '\0' };
+        for (Rlist *i = u.groups_secondary; i; i = i->next)
+        {
+            StringAppend(cmd, sep, sizeof(cmd));
+            StringAppend(cmd, RvalScalarValue(i->val), sizeof(cmd));
+            sep[0] = ',';
+        }
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
 
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_home) != 0)
     {
-        sprintf (cmd, "%s -d \"%s\"", cmd, u.home_dir);
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+        StringAppend(cmd, " -d \"", sizeof(cmd));
+        StringAppend(cmd, u.home_dir, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
 
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_shell) != 0)
     {
-        //7th
-        sprintf (cmd, "%s -s \"%s\"", cmd, u.shell);
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+        StringAppend(cmd, " -s \"", sizeof(cmd));
+        StringAppend(cmd, u.shell, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
-#if 0
-    if (CFUSR_CHECKBIT (changemap, i_user) != 0)
-    {
-        //1st (should be given)
-        sprintf (cmd, "%s %s", cmd, u.user);
-    }
-#endif
 
-    sprintf (cmd, "%s %s", cmd, puser);
+    printf("In %s at %i\n", __FUNCTION__, __LINE__);
+    StringAppend(cmd, " ", sizeof(cmd));
+    StringAppend(cmd, puser, sizeof(cmd));
+    printf("In %s at %i with cmd = \"%s\"\n", __FUNCTION__, __LINE__, cmd);
 
-    printf ("cmd=[%s]\n", cmd);
     if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to update user attributes (command '%s').", cmd);
     }
     else
     {
-        system(cmd);
+        if (strlen(cmd) >= sizeof(cmd) - 1)
+        {
+            // Instead of checking every string call above, assume that a maxed out
+            // string length overflowed the string.
+            Log(LOG_LEVEL_ERR, "Command line too long while modifying user '%s'", puser);
+            return 1;
+        }
+
+        int status;
+        status = system(cmd);
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        {
+            Log(LOG_LEVEL_ERR, "Command returned error while modifying user '%s'. (Command line: '%s')", puser, cmd);
+            return 1;
+        }
     }
     return 0;
 }
 
-void VerifyOneUsersPromise (char *puser, User u, int *result, enum cfopaction action)
+void VerifyOneUsersPromise (char *puser, User u, PromiseResult *result, enum cfopaction action)
 {
     int res;
 
-    char binfo[7][1024] = { 0 };
-    char pinfo[7][1024] = { 0 };
-    char ginfo[7][1024] = { 0 };
-
-    int status;
-    struct passwd passwd_info_buf;
     struct passwd *passwd_info;
-    char passwd_buf[CF_BUFSIZE];
-    status = getpwnam_r(puser, &passwd_info, passwd_buf, sizeof(passwd_buf), &passwd_result);
-    if (status)
+    errno = 0;
+    passwd_info = getpwnam(puser);
+    if (errno)
     {
-        Log(LOG_LEVEL_ERR, "Could not get information from user database. (getpwnam_r: '%s')", GetErrorStrFromCode(status));
+        Log(LOG_LEVEL_ERR, "Could not get information from user database. (getpwnam: '%s')", GetErrorStr());
         return;
     }
 
@@ -636,24 +599,23 @@ void VerifyOneUsersPromise (char *puser, User u, int *result, enum cfopaction ac
     {
         if (passwd_info)
         {
-            unsigned long int cmap = 0;
+            uint32_t cmap = 0;
             if (VerifyIfUserNeedsModifs (puser, u, passwd_info, &cmap)
                 == 1)
             {
-                printf ("should act on cmap=%u\n", cmap);
                 res = DoModifyUser (puser, u, cmap, action);
                 if (!res)
                 {
-                    *result = CFUSR_REPAIRED;
+                    *result = PROMISE_RESULT_CHANGE;
                 }
                 else
                 {
-                    *result = CFUSR_NOTKEPT;
+                    *result = PROMISE_RESULT_FAIL;
                 }
             }
             else
             {
-                *result = CFUSR_KEPT;
+                *result = PROMISE_RESULT_NOOP;
             }
         }
         else
@@ -661,11 +623,11 @@ void VerifyOneUsersPromise (char *puser, User u, int *result, enum cfopaction ac
             res = DoCreateUser (puser, u, action);
             if (!res)
             {
-                *result = CFUSR_REPAIRED;
+                *result = PROMISE_RESULT_CHANGE;
             }
             else
             {
-                *result = CFUSR_NOTKEPT;
+                *result = PROMISE_RESULT_FAIL;
             }
         }
     }
@@ -673,19 +635,19 @@ void VerifyOneUsersPromise (char *puser, User u, int *result, enum cfopaction ac
     {
         if (passwd_info)
         {
-            res = DoRemoveUser (puser, u, action);
+            res = DoRemoveUser (puser, action);
             if (!res)
             {
-                *result = CFUSR_REPAIRED;
+                *result = PROMISE_RESULT_CHANGE;
             }
             else
             {
-                *result = CFUSR_NOTKEPT;
+                *result = PROMISE_RESULT_FAIL;
             }
         }
         else
         {
-            *result = CFUSR_KEPT;
+            *result = PROMISE_RESULT_NOOP;
         }
     }
 }

@@ -148,24 +148,61 @@ bool GetGroupEntry(struct group **group_info, char **group_buf, size_t *buf_size
     }
 }
 
-void GroupGetUserMembership (const char *user, Seq *result)
+bool AreListsOfGroupsEqual (const BufferList *groups1, const Seq *groups2)
 {
+    // Dumb comparison. O(n^2), but number of groups is never that large anyway.
+    bool found = true;
+    BufferListIterator *i1 = BufferListIteratorGet(groups1);
+    while (true)
+    {
+        found = false;
+        for (int i2; i2 < SeqLength(groups2); i2++)
+        {
+            if (strcmp(BufferData(BufferListIteratorData(i1)), SeqAt(groups2, i2)) == 0)
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            break;
+        }
+    }
+    BufferListIteratorDestroy(i1);
+    return found;
+}
+
+bool GroupGetUserMembership (const char *user, BufferList *result)
+{
+    bool ret = true;
     struct group *group_info;
 
-    SeqClear(result);
     setgrent();
-    do
+    while (true)
     {
-        
+        errno = 0;
+        group_info = getgrent();
+        if (!group_info)
+        {
+            if (errno)
+            {
+                Log(LOG_LEVEL_ERR, "Error while getting group list. (getgrent: '%s')", GetErrorStr());
+                ret = false;
+            }
+            break;
+        }
         for (int i = 0; group_info->gr_mem[i] != NULL; i++)
         {
             if (strcmp(user, group_info->gr_mem[i]) == 0)
             {
-                SeqAdd(result, group_info->gr_name);
+                BufferListAppend(result, BufferNewFrom(group_info->gr_name, strlen(group_info->gr_name) + 1));
             }
         }
     }
     endgrent();
+
+    return ret;
 }
 
 
