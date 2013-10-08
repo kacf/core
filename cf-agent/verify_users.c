@@ -88,7 +88,6 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
 
     PromiseResult result;
     VerifyOneUsersPromise(pp->promiser, a.users, &result, a.transaction.action);
-    printf("In %s at %i result = %c\n", __FUNCTION__, __LINE__, result);
 
     switch (result) {
     case PROMISE_RESULT_NOOP:

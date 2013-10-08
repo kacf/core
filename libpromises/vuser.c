@@ -191,7 +191,6 @@ int main ()
     char entries[7][1024] = { 0 };
 
     FetchUserBasicInfo (user, entries);
-    printf ("%s\n%s\n", entries[0], entries[6]);
 
     return 0;
 }
@@ -207,15 +206,12 @@ bool AreListsOfGroupsEqual (const BufferList *groups1, const BufferList *groups2
     // Dumb comparison. O(n^2), but number of groups is never that large anyway.
     bool found = true;
     BufferListIterator *i1;
-    printf("In %s at %i with counts %i and %i\n", __FUNCTION__, __LINE__, BufferListCount(groups1), BufferListCount(groups2));
     for (i1 = BufferListIteratorGet(groups1); i1; i1 = (BufferListIteratorNext(i1) == 0) ? i1 : 0)
     {
         found = false;
         BufferListIterator *i2;
-        printf("In %s at %i\n", __FUNCTION__, __LINE__);
         for (i2 = BufferListIteratorGet(groups2); i2; i2 = (BufferListIteratorNext(i2) == 0) ? i2 : 0)
         {
-            printf("In %s at %i, comapring \"%s\" and \"%s\"\n", __FUNCTION__, __LINE__, BufferData(BufferListIteratorData(i1)), BufferData(BufferListIteratorData(i2)));
             if (strcmp(BufferData(BufferListIteratorData(i1)), BufferData(BufferListIteratorData(i2))) == 0)
             {
                 found = true;
@@ -251,12 +247,10 @@ bool GroupGetUserMembership (const char *user, BufferList *result)
             }
             break;
         }
-        printf("In %s at %i, adding group name %s\n", __FUNCTION__, __LINE__, group_info->gr_name);
         for (int i = 0; group_info->gr_mem[i] != NULL; i++)
         {
             if (strcmp(user, group_info->gr_mem[i]) == 0)
             {
-                printf("In %s at %i, adding group name %s\n", __FUNCTION__, __LINE__, group_info->gr_name);
                 BufferListAppend(result, BufferNewFrom(group_info->gr_name, strlen(group_info->gr_name) + 1));
                 break;
             }
@@ -485,7 +479,6 @@ int DoCreateUser (char *puser, User u, enum cfopaction action)
     }
     StringAppend(cmd, " ", sizeof(cmd));
     StringAppend(cmd, puser, sizeof(cmd));
-    printf("In %s at %i, cmd = \"%s\"\n", __FUNCTION__, __LINE__, cmd);
 
     if (action == cfa_warn || DONTDO)
     {
@@ -558,14 +551,12 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
 
     strcpy (cmd, CFUSR_CMDMOD);
 
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_uid) != 0)
     {
         StringAppend(cmd, " -u \"", sizeof(cmd));
         StringAppend(cmd, u.uid, sizeof(cmd));
         StringAppend(cmd, "\"", sizeof(cmd));
     }
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
 
     if (CFUSR_CHECKBIT (changemap, i_password) != 0)
     {
@@ -578,7 +569,6 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
             ChangePassword(puser, u.password, u.password_format);
         }
     }
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
 
     if (CFUSR_CHECKBIT (changemap, i_comment) != 0)
     {
@@ -590,7 +580,6 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
         }
     }
 
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_group) != 0)
     {
         StringAppend(cmd, " -g \"", sizeof(cmd));
@@ -598,7 +587,6 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
         StringAppend(cmd, "\"", sizeof(cmd));
     }
 
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_groups) != 0)
     {
         StringAppend(cmd, " -G \"", sizeof(cmd));
@@ -612,28 +600,22 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
         StringAppend(cmd, "\"", sizeof(cmd));
     }
 
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_home) != 0)
     {
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
         StringAppend(cmd, " -d \"", sizeof(cmd));
         StringAppend(cmd, u.home_dir, sizeof(cmd));
         StringAppend(cmd, "\"", sizeof(cmd));
     }
 
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     if (CFUSR_CHECKBIT (changemap, i_shell) != 0)
     {
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
         StringAppend(cmd, " -s \"", sizeof(cmd));
         StringAppend(cmd, u.shell, sizeof(cmd));
         StringAppend(cmd, "\"", sizeof(cmd));
     }
 
-    printf("In %s at %i\n", __FUNCTION__, __LINE__);
     StringAppend(cmd, " ", sizeof(cmd));
     StringAppend(cmd, puser, sizeof(cmd));
-    printf("In %s at %i with cmd = \"%s\"\n", __FUNCTION__, __LINE__, cmd);
 
     if (action == cfa_warn || DONTDO)
     {
