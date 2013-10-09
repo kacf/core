@@ -178,6 +178,10 @@ Attributes GetUserAttributes(const EvalContext *ctx, const Promise *pp)
 {
     Attributes attr = { {0} };
 
+    attr.havebundle = PromiseBundleConstraintExists(ctx, "home_bundle", pp);
+
+    attr.inherit = PromiseGetConstraintAsBoolean(ctx, "home_bundle_inherit", pp);
+
     attr.transaction = GetTransactionConstraints(ctx, pp);
     attr.classes = GetClassDefinitionConstraints(ctx, pp);
     attr.users = GetUserConstraints(ctx, pp);

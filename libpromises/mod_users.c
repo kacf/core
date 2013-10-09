@@ -44,8 +44,9 @@ static const ConstraintSyntax users_constraints[] =
     ConstraintSyntaxNewString("description", "", "User comment", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("group_primary", "", "User primary group", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewStringList("groups_secondary", ".*", "User additional groups", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("groups2_secondary", "", "Duplicated (just in order to test standalone code)", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("home_dir", CF_ABSPATHRANGE, "User home directory", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewBundle("home_bundle", "Specify the name of a bundle to run when creating a user", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewBool("home_bundle_inherit", "If true this causes the home_bundle to inherit the private classes of its parent", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("shell", CF_ABSPATHRANGE, "User shell", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewNull()
 };

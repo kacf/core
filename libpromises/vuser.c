@@ -131,7 +131,7 @@ static bool IsPasswordCorrect(const char *puser, const char* password, PasswordF
     return false;
 }
 
-static int ChangePassword(const char *puser, const char *password, PasswordFormat format)
+static bool ChangePassword(const char *puser, const char *password, PasswordFormat format)
 {
     int status;
     const char *cmd_str;
@@ -151,7 +151,7 @@ static int ChangePassword(const char *puser, const char *password, PasswordForma
     if (!cmd)
     {
         Log(LOG_LEVEL_ERR, "Could not launch password changing command '%s': %s.", cmd_str, GetErrorStr());
-        return PROMISE_RESULT_FAIL;
+        return false;
     }
 
     // String lengths plus a ':' and a '\n', but not including '\0'.
@@ -172,16 +172,16 @@ static int ChangePassword(const char *puser, const char *password, PasswordForma
         }
         Log(LOG_LEVEL_ERR, "Could not write password to password changing command '%s': %s.", cmd_str, error_str);
         cf_pclose(cmd);
-        return PROMISE_RESULT_FAIL;
+        return false;
     }
     status = cf_pclose(cmd);
     if (status)
     {
         Log(LOG_LEVEL_ERR, "'%s' returned non-zero status: %i\n", cmd_str, status);
-        return PROMISE_RESULT_FAIL;
+        return false;
     }
 
-    return PROMISE_RESULT_CHANGE;
+    return true;
 }
 
 #if 0
@@ -323,7 +323,7 @@ static void TransformGidsToGroups(BufferList *list)
     BufferListIteratorDestroy(&i);
 }
 
-int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_info,
+bool VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_info,
                              uint32_t *changemap)
 {
     //name;pass;id;grp;comment;home;shell
@@ -353,32 +353,35 @@ int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_in
 
     if (u.group_primary != NULL)
     {
-        bool group_is_gid = (strlen(u.group_primary) == strspn(u.group_primary, "0123456789"));
+        bool group_could_be_gid = (strlen(u.group_primary) == strspn(u.group_primary, "0123456789"));
         int gid;
 
-        if (group_is_gid)
+        // We try name first, even if it looks like a gid. Only fall back to gid.
+        struct group *group_info;
+        errno = 0;
+        group_info = getgrnam(u.group_primary);
+        // Apparently POSIX is ambiguous here. All the values below mean "not found".
+        if (!group_info && errno != 0 && errno != ENOENT && errno != EBADF && errno != ESRCH
+            && errno != EWOULDBLOCK && errno != EPERM)
         {
-            gid = atoi(u.group_primary);
+            Log(LOG_LEVEL_ERR, "Could not obtain information about group '%s'. (getgrnam: '%s')", u.group_primary, GetErrorStr());
+            gid = -1;
         }
-        else
+        else if (!group_info)
         {
-            struct group *group_info;
-            errno = 0;
-            group_info = getgrnam(u.group_primary);
-            if (!group_info && errno != 0 && errno != ENOENT)
+            if (group_could_be_gid)
             {
-                Log(LOG_LEVEL_ERR, "Could not obtain information about group '%s'. (getgrnam: '%s')", u.group_primary, GetErrorStr());
-                gid = -1;
+                gid = atoi(u.group_primary);
             }
-            else if (!group_info)
+            else
             {
                 Log(LOG_LEVEL_ERR, "No such group '%s'.", u.group_primary);
                 gid = -1;
             }
-            else
-            {
-                gid = group_info->gr_gid;
-            }
+        }
+        else
+        {
+            gid = group_info->gr_gid;
         }
 
         if (gid != passwd_info->pw_gid)
@@ -410,20 +413,20 @@ int VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_in
     ////////////////////////////////////////////
     if (*changemap == 0)
     {
-        return 0;
+        return false;
     }
     else
     {
-        return 1;
+        return true;
     }
 }
 
-int DoCreateUser (char *puser, User u, enum cfopaction action)
+bool DoCreateUser (char *puser, User u, enum cfopaction action)
 {
     char cmd[CF_BUFSIZE];
     if (puser == NULL || !strcmp (puser, ""))
     {
-        return -1;
+        return false;
     }
     strcpy (cmd, CFUSR_CMDADD);
 
@@ -491,7 +494,7 @@ int DoCreateUser (char *puser, User u, enum cfopaction action)
             // Instead of checking every string call above, assume that a maxed out
             // string length overflowed the string.
             Log(LOG_LEVEL_ERR, "Command line too long while creating user '%s'", puser);
-            return 1;
+            return false;
         }
 
         int status;
@@ -499,19 +502,22 @@ int DoCreateUser (char *puser, User u, enum cfopaction action)
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         {
             Log(LOG_LEVEL_ERR, "Command returned error while creating user '%s'. (Command line: '%s')", puser, cmd);
-            return 1;
+            return false;
         }
 
         if (u.password != NULL && strcmp (u.password, ""))
         {
-            ChangePassword(puser, u.password, u.password_format);
+            if (!ChangePassword(puser, u.password, u.password_format))
+            {
+                return false;
+            }
         }
     }
 
-    return 0;
+    return true;
 }
 
-int DoRemoveUser (char *puser, enum cfopaction action)
+bool DoRemoveUser (char *puser, enum cfopaction action)
 {
     char cmd[CF_BUFSIZE];
 
@@ -531,7 +537,7 @@ int DoRemoveUser (char *puser, enum cfopaction action)
             // Instead of checking every string call above, assume that a maxed out
             // string length overflowed the string.
             Log(LOG_LEVEL_ERR, "Command line too long while removing user '%s'", puser);
-            return 1;
+            return false;
         }
 
         int status;
@@ -539,13 +545,13 @@ int DoRemoveUser (char *puser, enum cfopaction action)
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         {
             Log(LOG_LEVEL_ERR, "Command returned error while removing user '%s'. (Command line: '%s')", puser, cmd);
-            return 1;
+            return false;
         }
     }
-    return 0;
+    return true;
 }
 
-int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction action)
+bool DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction action)
 {
     char cmd[CF_BUFSIZE];
 
@@ -566,7 +572,10 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
         }
         else
         {
-            ChangePassword(puser, u.password, u.password_format);
+            if (!ChangePassword(puser, u.password, u.password_format))
+            {
+                return false;
+            }
         }
     }
 
@@ -629,7 +638,7 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
             // Instead of checking every string call above, assume that a maxed out
             // string length overflowed the string.
             Log(LOG_LEVEL_ERR, "Command line too long while modifying user '%s'", puser);
-            return 1;
+            return false;
         }
 
         int status;
@@ -637,15 +646,15 @@ int DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction actio
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         {
             Log(LOG_LEVEL_ERR, "Command returned error while modifying user '%s'. (Command line: '%s')", puser, cmd);
-            return 1;
+            return false;
         }
     }
-    return 0;
+    return true;
 }
 
 void VerifyOneUsersPromise (char *puser, User u, PromiseResult *result, enum cfopaction action)
 {
-    int res;
+    bool res;
 
     struct passwd *passwd_info;
     errno = 0;
@@ -661,11 +670,10 @@ void VerifyOneUsersPromise (char *puser, User u, PromiseResult *result, enum cfo
         if (passwd_info)
         {
             uint32_t cmap = 0;
-            if (VerifyIfUserNeedsModifs (puser, u, passwd_info, &cmap)
-                == 1)
+            if (VerifyIfUserNeedsModifs (puser, u, passwd_info, &cmap))
             {
                 res = DoModifyUser (puser, u, cmap, action);
-                if (!res)
+                if (res)
                 {
                     *result = PROMISE_RESULT_CHANGE;
                 }
@@ -682,7 +690,7 @@ void VerifyOneUsersPromise (char *puser, User u, PromiseResult *result, enum cfo
         else
         {
             res = DoCreateUser (puser, u, action);
-            if (!res)
+            if (res)
             {
                 *result = PROMISE_RESULT_CHANGE;
             }
@@ -697,7 +705,7 @@ void VerifyOneUsersPromise (char *puser, User u, PromiseResult *result, enum cfo
         if (passwd_info)
         {
             res = DoRemoveUser (puser, action);
-            if (!res)
+            if (res)
             {
                 *result = PROMISE_RESULT_CHANGE;
             }
