@@ -32,12 +32,28 @@ typedef enum
     i_group,
     i_groups,
     i_home,
-    i_shell
+    i_shell,
+    i_locked
 } which;
 
 #define CFUSR_CMDADD "/usr/sbin/useradd"
 #define CFUSR_CMDDEL "/usr/sbin/userdel"
 #define CFUSR_CMDMOD "/usr/sbin/usermod"
+
+static const char *GetPlatformSpecificExpirationDate()
+{
+     // 2nd January 1970.
+
+#if defined(_AIX)
+    return "0102000070";
+#elif defined(__hpux) || defined(__SVR4)
+    return "02/01/70";
+#elif defined(__linux__)
+    return "1970-01-02";
+#else
+# error Your operating system lacks the proper string for the "usermod -e" utility.
+#endif
+}
 
 static int PasswordSupplier(int num_msg, const struct pam_message **msg,
            struct pam_response **resp, void *appdata_ptr)
@@ -60,6 +76,39 @@ static int PasswordSupplier(int num_msg, const struct pam_message **msg,
     return PAM_SUCCESS;
 }
 
+static bool GetPasswordHash(const char *puser, const struct passwd *passwd_info, const char **result)
+{
+#ifdef HAVE_GETSPNAM
+    // If the hash is very short, it's probably a stub. Try getting the shadow password instead.
+    if (strlen(passwd_info->pw_passwd) <= 4)
+    {
+        struct spwd *spwd_info;
+        errno = 0;
+        spwd_info = getspnam(puser);
+        if (!spwd_info)
+        {
+            if (errno)
+            {
+                Log(LOG_LEVEL_ERR, "Could not get information from user shadow database. (getspnam: '%s')", GetErrorStr());
+                return false;
+            }
+            else
+            {
+                Log(LOG_LEVEL_ERR, "Could not find user when checking password.");
+                return false;
+            }
+        }
+        else if (spwd_info)
+        {
+            *result = spwd_info->sp_pwdp;
+            return true;
+        }
+    }
+#endif // HAVE_GETSPNAM
+    *result = passwd_info->pw_passwd;
+    return true;
+}
+
 static bool IsPasswordCorrect(const char *puser, const char* password, PasswordFormat format, const struct passwd *passwd_info)
 {
     /*
@@ -70,33 +119,12 @@ static bool IsPasswordCorrect(const char *puser, const char* password, PasswordF
 
     if (format == PASSWORD_FORMAT_HASH)
     {
-#ifdef HAVE_GETSPNAM
-        // If the hash is very short, it's probably a stub. Try getting the shadow password instead.
-        if (strlen(passwd_info->pw_passwd) <= 4)
+        const char *system_hash;
+        if (!GetPasswordHash(puser, passwd_info, &system_hash))
         {
-            struct spwd *spwd_info;
-            errno = 0;
-            spwd_info = getspnam(puser);
-            if (!spwd_info)
-            {
-                if (errno)
-                {
-                    Log(LOG_LEVEL_ERR, "Could not get information from user shadow database. (getspnam: '%s')", GetErrorStr());
-                    return false;
-                }
-                else
-                {
-                    Log(LOG_LEVEL_ERR, "Could not find user when checking password.");
-                    return false;
-                }
-            }
-            else if (spwd_info)
-            {
-                return (strcmp(password, spwd_info->sp_pwdp) == 0);
-            }
+            return false;
         }
-#endif // HAVE_GETSPNAM
-        return (strcmp(password, passwd_info->pw_passwd) == 0);
+        return (strcmp(password, system_hash) == 0);
     }
     else if (format != PASSWORD_FORMAT_PLAINTEXT)
     {
@@ -184,17 +212,71 @@ static bool ChangePassword(const char *puser, const char *password, PasswordForm
     return true;
 }
 
-#if 0
-int main ()
+static bool IsAccountLocked(const char *puser, const struct passwd *passwd_info)
 {
-    char *user = "vboxadd";
-    char entries[7][1024] = { 0 };
+    /* Note that when we lock an account, we do two things, we make the password hash invalid
+     * by adding a '!', and we set the expiry date far in the past. However, we only have the
+     * possibility of checking the password hash, because the expire field is not exposed by
+     * POSIX functions. This is not a problem as long as you stick to CFEngine, but if the user
+     * unlocks the account manually, but forgets to reset the expiry time, CFEngine could think
+     * that the account is unlocked when it really isn't.
+     */
 
-    FetchUserBasicInfo (user, entries);
-
-    return 0;
+    const char *system_hash;
+    if (!GetPasswordHash(puser, passwd_info, &system_hash))
+    {
+        return false;
+    }
+    return (system_hash[0] == '!');
 }
-#endif
+
+static bool SetAccountLocked(const char *puser, const char *hash, bool lock)
+{
+    char cmd[CF_BUFSIZE + strlen(hash)];
+
+    strcpy (cmd, CFUSR_CMDMOD);
+    StringAppend(cmd, " -e \"", sizeof(cmd));
+
+    if (lock)
+    {
+        if (hash[0] != '!')
+        {
+            char new_hash[strlen(hash) + 2];
+            sprintf(new_hash, "!%s", hash);
+            if (!ChangePassword(puser, new_hash, PASSWORD_FORMAT_HASH))
+            {
+                return false;
+            }
+        }
+        StringAppend(cmd, GetPlatformSpecificExpirationDate(), sizeof(cmd));
+    }
+    else
+    {
+        // Important to check. Password may already have been changed if that was also
+        // specified in the policy.
+        if (hash[0] == '!')
+        {
+            if (!ChangePassword(puser, &hash[1], PASSWORD_FORMAT_HASH))
+            {
+                return false;
+            }
+        }
+    }
+
+    StringAppend(cmd, "\" ", sizeof(cmd));
+    StringAppend(cmd, puser, sizeof(cmd));
+
+    int status;
+    status = system(cmd);
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+    {
+        Log(LOG_LEVEL_ERR, "Command returned error while %s user '%s'. (Command line: '%s')",
+            lock ? "locking" : "unlocking", puser, cmd);
+        return false;
+    }
+
+    return true;
+}
 
 bool AreListsOfGroupsEqual (const BufferList *groups1, const BufferList *groups2)
 {
@@ -326,7 +408,6 @@ static void TransformGidsToGroups(BufferList *list)
 bool VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_info,
                              uint32_t *changemap)
 {
-    //name;pass;id;grp;comment;home;shell
     if (u.description != NULL && strcmp (u.description, passwd_info->pw_gecos))
     {
         CFUSR_SETBIT (*changemap, i_comment);
@@ -343,7 +424,15 @@ bool VerifyIfUserNeedsModifs (char *puser, User u, const struct passwd *passwd_i
     {
         CFUSR_SETBIT (*changemap, i_shell);
     }
-    if (u.password != NULL && strcmp (u.password, ""))
+    bool account_is_locked = IsAccountLocked(puser, passwd_info);
+    if ((!account_is_locked && u.policy == USER_STATE_LOCKED)
+        || (account_is_locked && u.policy != USER_STATE_LOCKED))
+    {
+        CFUSR_SETBIT(*changemap, i_locked);
+    }
+    // Don't bother with passwords if the account is going to be locked anyway.
+    if (u.password != NULL && strcmp (u.password, "")
+        && u.policy != USER_STATE_LOCKED)
     {
         if (!IsPasswordCorrect(puser, u.password, u.password_format, passwd_info))
         {
@@ -505,7 +594,14 @@ bool DoCreateUser (char *puser, User u, enum cfopaction action)
             return false;
         }
 
-        if (u.password != NULL && strcmp (u.password, ""))
+        if (u.policy == USER_STATE_LOCKED)
+        {
+            if (!SetAccountLocked(puser, "", true))
+            {
+                return false;
+            }
+        }
+        else if (u.password != NULL && strcmp (u.password, ""))
         {
             if (!ChangePassword(puser, u.password, u.password_format))
             {
@@ -551,7 +647,7 @@ bool DoRemoveUser (char *puser, enum cfopaction action)
     return true;
 }
 
-bool DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction action)
+bool DoModifyUser (char *puser, User u, const struct passwd *passwd_info, uint32_t changemap, enum cfopaction action)
 {
     char cmd[CF_BUFSIZE];
 
@@ -562,21 +658,6 @@ bool DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction acti
         StringAppend(cmd, " -u \"", sizeof(cmd));
         StringAppend(cmd, u.uid, sizeof(cmd));
         StringAppend(cmd, "\"", sizeof(cmd));
-    }
-
-    if (CFUSR_CHECKBIT (changemap, i_password) != 0)
-    {
-        if (action == cfa_warn || DONTDO)
-        {
-            Log(LOG_LEVEL_NOTICE, "Need to change password for user '%s'.", puser);
-        }
-        else
-        {
-            if (!ChangePassword(puser, u.password, u.password_format))
-            {
-                return false;
-            }
-        }
     }
 
     if (CFUSR_CHECKBIT (changemap, i_comment) != 0)
@@ -626,12 +707,50 @@ bool DoModifyUser (char *puser, User u, uint32_t changemap, enum cfopaction acti
     StringAppend(cmd, " ", sizeof(cmd));
     StringAppend(cmd, puser, sizeof(cmd));
 
+    if (CFUSR_CHECKBIT (changemap, i_password) != 0)
+    {
+        if (action == cfa_warn || DONTDO)
+        {
+            Log(LOG_LEVEL_NOTICE, "Need to change password for user '%s'.", puser);
+        }
+        else
+        {
+            if (!ChangePassword(puser, u.password, u.password_format))
+            {
+                return false;
+            }
+        }
+    }
+
+    if (CFUSR_CHECKBIT (changemap, i_locked) != 0)
+    {
+        if (action == cfa_warn || DONTDO)
+        {
+            Log(LOG_LEVEL_NOTICE, "Need to %s account for user '%s'.",
+                (u.policy == USER_STATE_LOCKED) ? "lock" : "unlock", puser);
+        }
+        else
+        {
+            const char *hash;
+            if (!GetPasswordHash(puser, passwd_info, &hash))
+            {
+                return false;
+            }
+            if (!SetAccountLocked(puser, hash, (u.policy == USER_STATE_LOCKED)))
+            {
+                return false;
+            }
+        }
+    }
+
+    // If password and locking were the only things changed, don't run the command.
+    CFUSR_CLEARBIT(changemap, i_password);
+    CFUSR_CLEARBIT(changemap, i_locked);
     if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to update user attributes (command '%s').", cmd);
     }
-    // If password was the only thing changed, don't run the command.
-    else if (CFUSR_CLEARBIT(changemap, i_password) != 0)
+    else if (changemap != 0)
     {
         if (strlen(cmd) >= sizeof(cmd) - 1)
         {
@@ -659,20 +778,22 @@ void VerifyOneUsersPromise (char *puser, User u, PromiseResult *result, enum cfo
     struct passwd *passwd_info;
     errno = 0;
     passwd_info = getpwnam(puser);
-    if (errno)
+    // Apparently POSIX is ambiguous here. All the values below mean "not found".
+    if (!passwd_info && errno != 0 && errno != ENOENT && errno != EBADF && errno != ESRCH
+        && errno != EWOULDBLOCK && errno != EPERM)
     {
         Log(LOG_LEVEL_ERR, "Could not get information from user database. (getpwnam: '%s')", GetErrorStr());
         return;
     }
 
-    if (u.policy == USER_STATE_PRESENT)
+    if (u.policy == USER_STATE_PRESENT || u.policy == USER_STATE_LOCKED)
     {
         if (passwd_info)
         {
             uint32_t cmap = 0;
             if (VerifyIfUserNeedsModifs (puser, u, passwd_info, &cmap))
             {
-                res = DoModifyUser (puser, u, cmap, action);
+                res = DoModifyUser (puser, u, passwd_info, cmap, action);
                 if (res)
                 {
                     *result = PROMISE_RESULT_CHANGE;
