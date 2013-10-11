@@ -456,6 +456,7 @@ AC_CHECK_HEADERS(zone.h)
 AC_CHECK_HEADERS(sys/uio.h)
 AC_CHECK_HEADERS(sys/types.h)
 AC_CHECK_HEADERS(sys/mpctl.h) dnl For HP-UX $(sys.cpus) - Mantis #1069
+AC_CHECK_HEADERS(shadow.h)
 AC_CHECK_HEADERS(sys/jail.h, [], [], [AC_INCLUDES_DEFAULT
 #ifdef HAVE_SYS_PARAM_H
 # include <sys/param.h>
@@ -590,6 +591,8 @@ AC_CHECK_DECLS(localtime_r, [], [], [[#include <time.h>]])
 AC_REPLACE_FUNCS(localtime_r)
 
 AC_CHECK_FUNCS(getpwent setpwent endpwent)
+
+AC_CHECK_FUNCS(getspnam)
 
 AC_CHECK_DECLS(getnetgrent, [], [], [[#include <netdb.h>]])
 AC_CHECK_FUNCS(getnetgrent)

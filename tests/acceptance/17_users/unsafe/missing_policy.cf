@@ -1,0 +1,42 @@
+#######################################################
+#
+# Test a user promise without a policy attribute.
+#
+#######################################################
+
+body common control
+{
+      inputs => { "../../default.cf.sub" };
+      bundlesequence  => { default("$(this.promise_filename)") };
+}
+
+#######################################################
+
+bundle agent init
+{
+  users:
+    "johndoe"
+      policy => "absent";
+}
+
+#######################################################
+
+bundle agent test
+{
+  users:
+    "johndoe";
+}
+
+#######################################################
+
+bundle agent check
+{
+  classes:
+      "ok" not => regcmp(".*johndoe.*", execresult("$(G.grep) johndoe /etc/passwd", "noshell"));
+
+  reports:
+    ok::
+      "$(this.promise_filename) Pass";
+    !ok::
+      "$(this.promise_filename) FAIL";
+}

@@ -1,0 +1,77 @@
+#######################################################
+#
+# Test adding a user with a primary gid.
+#
+#######################################################
+
+body common control
+{
+      inputs => { "../../default.cf.sub" };
+      bundlesequence  => { default("$(this.promise_filename)") };
+}
+
+#######################################################
+
+bundle agent init
+{
+  # Remove him first, should he already be present.
+  users:
+    "johndoe"
+      policy => "absent";
+
+  files:
+    "$(G.testfile)"
+      delete => init_delete;
+}
+
+body delete init_delete
+{
+  rmdirs => "false";
+}
+
+#######################################################
+
+body contain test_contain_body
+{
+  useshell => "useshell";
+}
+
+bundle agent test
+{
+  users:
+    "johndoe"
+      policy => "present",
+      # "2" should be "bin" on most systems.
+      group_primary => "2";
+
+  commands:
+    "sudo -u johndoe $(G.touch) $(G.testfile)"
+      contain => test_contain_body;
+}
+
+#######################################################
+
+body perms check_perms_body
+{
+  groups => { "2" };
+}
+
+body classes check_classes_body
+{
+  promise_repaired => { "not_ok" };
+  promise_kept => { "ok" };
+}
+
+bundle agent check
+{
+  files:
+    "$(G.testfile)"
+      perms => check_perms_body,
+      classes => check_classes_body;
+
+  reports:
+    ok.!not_ok::
+      "$(this.promise_filename) Pass";
+    !ok|not_ok::
+      "$(this.promise_filename) FAIL";
+}

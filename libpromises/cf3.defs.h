@@ -1502,6 +1502,36 @@ typedef struct
 } Database;
 
 /*************************************************************************/
+typedef enum
+{
+    USER_STATE_PRESENT,
+    USER_STATE_ABSENT,
+    USER_STATE_LOCKED,
+    USER_STATE_NONE
+} UserState;
+
+typedef enum
+{
+    PASSWORD_FORMAT_PLAINTEXT,
+    PASSWORD_FORMAT_HASH,
+    PASSWORD_FORMAT_NONE
+} PasswordFormat;
+
+typedef struct
+{
+    UserState policy;
+    char *uid;
+    char *user;
+    PasswordFormat password_format;
+    char *password;
+    char *description;
+    char *group_primary;
+    Rlist *groups_secondary;
+    char *home_dir;
+    char *shell;
+} User;
+
+/*************************************************************************/
 
 typedef enum
 {
@@ -1580,6 +1610,7 @@ typedef struct
     Acl acl;
     Database database;
     Services service;
+    User users;
     Environments env;
     char *transformer;
     char *pathtype;
