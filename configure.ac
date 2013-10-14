@@ -592,7 +592,13 @@ AC_REPLACE_FUNCS(localtime_r)
 
 AC_CHECK_FUNCS(getpwent setpwent endpwent)
 
-AC_CHECK_FUNCS(getspnam)
+AC_CHECK_FUNCS(getspnam lckpwdf ulckpwdf)
+
+AC_PATH_PROG([CHPASSWD], [chpasswd])
+AS_IF([test "x$CHPASSWD" != "x"],
+      [AC_DEFINE(HAVE_CHPASSWD, 1, [Define if chpasswd tool is present])]
+      [AC_DEFINE_UNQUOTED(CHPASSWD, ["$CHPASSWD"], [Path to chpasswd tool])]
+     )
 
 AC_CHECK_DECLS(getnetgrent, [], [], [[#include <netdb.h>]])
 AC_CHECK_FUNCS(getnetgrent)

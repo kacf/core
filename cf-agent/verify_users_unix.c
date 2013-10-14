@@ -35,6 +35,8 @@
 #include <ornaments.h>
 #include <locks.h>
 #include <promises.h>
+#include <files_copy.h>
+#include <files_interfaces.h>
 
 #include <cf3.defs.h>
 #include <bufferlist.h>
@@ -60,12 +62,6 @@
 #define CFUSR_CMDADD "/usr/sbin/useradd"
 #define CFUSR_CMDDEL "/usr/sbin/userdel"
 #define CFUSR_CMDMOD "/usr/sbin/usermod"
-
-#if defined(_AIX)
-# define CFUSR_CMDCHPASSWD "/usr/bin/chpasswd"
-#else
-# define CFUSR_CMDCHPASSWD "/usr/sbin/chpasswd"
-#endif
 
 typedef enum
 {
@@ -203,22 +199,39 @@ static bool IsPasswordCorrect(const char *puser, const char* password, PasswordF
     return false;
 }
 
-static bool ChangePassword(const char *puser, const char *password, PasswordFormat format)
+static bool ChangePlaintextPasswordUsingLibPam(const char *puser, const char *password)
 {
     int status;
-    const char *cmd_str;
-    if (format == PASSWORD_FORMAT_PLAINTEXT)
+    pam_handle_t *handle;
+    struct pam_conv conv;
+    conv.conv = PasswordSupplier;
+    conv.appdata_ptr = (void*)password;
+
+    status = pam_start("passwd", puser, &conv, &handle);
+    if (status != PAM_SUCCESS)
     {
-        cmd_str = CFUSR_CMDCHPASSWD;
+        Log(LOG_LEVEL_ERR, "Could not initialize pam session. (pam_start: '%s')", pam_strerror(NULL, status));
+        return false;
     }
-    else if (format == PASSWORD_FORMAT_HASH)
+    status = pam_chauthtok(handle, PAM_SILENT);
+    pam_end(handle, status);
+    if (status == PAM_SUCCESS)
     {
-        cmd_str = CFUSR_CMDCHPASSWD " -e";
+        return true;
     }
     else
     {
-        ProgrammingError("Unknown PasswordFormat value");
+        Log(LOG_LEVEL_ERR, "Could not change password for user '%s'. (pam_chauthtok: '%s')",
+            puser, pam_strerror(handle, status));
+        return false;
     }
+}
+
+#ifdef HAVE_CHPASSWD
+static bool ChangePasswordHashUsingChpasswd(const char *puser, const char *password)
+{
+    int status;
+    const char *cmd_str = CHPASSWD " -e";
     FILE *cmd = cf_popen_sh(cmd_str, "w");
     if (!cmd)
     {
@@ -254,6 +267,207 @@ static bool ChangePassword(const char *puser, const char *password, PasswordForm
     }
 
     return true;
+}
+#endif // HAVE_CHPASSWD
+
+#if defined(HAVE_LCKPWDF) && defined(HAVE_ULCKPWDF)
+static bool ChangePasswordHashUsingLckpwdf(const char *puser, const char *password)
+{
+    bool result = false;
+
+    struct stat statbuf;
+    const char *passwd_file = "/etc/shadow";
+    if (stat(passwd_file, &statbuf) == -1)
+    {
+        passwd_file = "/etc/passwd";
+    }
+
+    if (lckpwdf() != 0)
+    {
+        Log(LOG_LEVEL_ERR, "Not able to obtain lock on password database.");
+        return false;
+    }
+
+    char backup_file[strlen(passwd_file) + strlen(".cf-backup") + 1];
+    snprintf(backup_file, sizeof(backup_file), "%s.cf-backup", passwd_file);
+    unlink(backup_file);
+
+    char edit_file[strlen(passwd_file) + strlen(".cf-edit") + 1];
+    snprintf(edit_file, sizeof(edit_file), "%s.cf-edit", passwd_file);
+    unlink(edit_file);
+
+    if (!CopyRegularFileDisk(passwd_file, backup_file))
+    {
+        Log(LOG_LEVEL_ERR, "Could not back up existing password database '%s' to '%s'.", passwd_file, backup_file);
+        goto unlock_passwd;
+    }
+
+    FILE *passwd_fd = fopen(passwd_file, "r");
+    if (!passwd_fd)
+    {
+        Log(LOG_LEVEL_ERR, "Could not open password database '%s'. (fopen: '%s')", passwd_file, GetErrorStr());
+        goto unlock_passwd;
+    }
+    int edit_fd_int = open(edit_file, O_WRONLY | O_CREAT | O_EXCL, S_IWUSR);
+    if (edit_fd_int < 0)
+    {
+        if (errno == EEXIST)
+        {
+            Log(LOG_LEVEL_CRIT, "Temporary file already existed when trying to open '%s'. (open: '%s') "
+                "This should NEVER happen and could mean that someone is trying to break into your system!!",
+                edit_file, GetErrorStr());
+        }
+        else
+        {
+            Log(LOG_LEVEL_ERR, "Could not open password database temporary file '%s'. (open: '%s')", edit_file, GetErrorStr());
+        }
+        goto close_passwd_fd;
+    }
+    FILE *edit_fd = fdopen(edit_fd_int, "w");
+    if (!edit_fd)
+    {
+        Log(LOG_LEVEL_ERR, "Could not open password database temporary file '%s'. (fopen: '%s')", edit_file, GetErrorStr());
+        close(edit_fd_int);
+        goto close_passwd_fd;
+    }
+
+    while (true)
+    {
+        char line[CF_BUFSIZE];
+        int read_result = CfReadLine(line, sizeof(line), passwd_fd);
+        if (read_result < 0)
+        {
+            Log(LOG_LEVEL_ERR, "Error while reading password database: %s", GetErrorStr());
+            goto close_both;
+        }
+        else if (read_result >= sizeof(line))
+        {
+            Log(LOG_LEVEL_ERR, "Unusually long line found in password database while editing user '%s'. Not updating.",
+                puser);
+        }
+        else if (read_result == 0)
+        {
+            break;
+        }
+
+        // Editing the password database is risky business, so do as little parsing as possible.
+        // Just enough to get the hash in there.
+        char *field_start = NULL;
+        char *field_end = NULL;
+        field_start = strchr(line, ':');
+        if (field_start)
+        {
+            field_end = strchr(field_start + 1, ':');
+        }
+        if (!field_start || !field_end)
+        {
+            Log(LOG_LEVEL_ERR, "Unexpected format found in password database while editing user '%s'. Not updating.",
+                puser);
+            goto close_both;
+        }
+
+        // Worst case length: Existing password is empty plus one '\n' and one '\0'.
+        char new_line[strlen(line) + strlen(password) + 2];
+        *field_start = '\0';
+        *field_end = '\0';
+        if (strcmp(line, puser) == 0)
+        {
+            sprintf(new_line, "%s:%s:%s\n", line, password, field_end + 1);
+        }
+        else
+        {
+            sprintf(new_line, "%s:%s:%s\n", line, field_start + 1, field_end + 1);
+        }
+
+        size_t new_line_size = strlen(new_line);
+        size_t written_so_far = 0;
+        while (written_so_far < new_line_size)
+        {
+            clearerr(edit_fd);
+            size_t written = fwrite(new_line, 1, new_line_size, edit_fd);
+            if (written == 0)
+            {
+                const char *err_str;
+                if (ferror(edit_fd))
+                {
+                    err_str = GetErrorStr();
+                }
+                else
+                {
+                    err_str = "Unknown error";
+                }
+                Log(LOG_LEVEL_ERR, "Error while writing to file '%s'. (fwrite: '%s')", edit_file, err_str);
+                goto close_both;
+            }
+            written_so_far += written;
+        }
+    }
+
+    fclose(edit_fd);
+    fclose(passwd_fd);
+
+    if (!CopyFilePermissionsDisk(passwd_file, edit_file))
+    {
+        Log(LOG_LEVEL_ERR, "Could not copy permissions from '%s' to '%s'", passwd_file, edit_file);
+        goto unlock_passwd;
+    }
+
+    if (rename(edit_file, passwd_file) < 0)
+    {
+        Log(LOG_LEVEL_ERR, "Could not replace '%s' with edited password database '%s'. (rename: '%s')",
+            passwd_file, edit_file, GetErrorStr());
+        goto unlock_passwd;
+    }
+
+    result = true;
+
+    goto unlock_passwd;
+
+close_both:
+    fclose(edit_fd);
+    unlink(edit_file);
+close_passwd_fd:
+    fclose(passwd_fd);
+unlock_passwd:
+    ulckpwdf();
+
+    return result;
+}
+#endif // defined(HAVE_LCKPWDF) && defined(HAVE_ULCKPWDF)
+
+static bool ChangePassword(const char *puser, const char *password, PasswordFormat format)
+{
+    if (format == PASSWORD_FORMAT_PLAINTEXT)
+    {
+        return ChangePlaintextPasswordUsingLibPam(puser, password);
+    }
+
+    assert(format == PASSWORD_FORMAT_HASH);
+
+#ifdef HAVE_CHPASSWD
+    struct stat statbuf;
+    if (stat(CHPASSWD, &statbuf) != -1)
+    {
+        return ChangePasswordHashUsingChpasswd(puser, password);
+    }
+    else
+#endif
+#if defined(HAVE_LCKPWDF) && defined(HAVE_ULCKPWDF)
+    {
+        return ChangePasswordHashUsingLckpwdf(puser, password);
+    }
+#elif defined(HAVE_CHPASSWD)
+    {
+        Log(LOG_LEVEL_ERR, "No means to set password for user '%s' was found. Tried using the '%s' tool with no luck.",
+            puser, CHPASSWD);
+        return false;
+    }
+#else
+    {
+        Log(LOG_LEVEL_WARNING, "Setting hashed password or locking user '%s' not supported on this platform.", puser);
+        return false;
+    }
+#endif
 }
 
 static bool IsAccountLocked(const char *puser, const struct passwd *passwd_info)
@@ -922,7 +1136,7 @@ void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
         return;
     }
 
-    PromiseResult result;
+    PromiseResult result = PROMISE_RESULT_NOOP;
     VerifyOneUsersPromise(pp->promiser, a.users, &result, a.transaction.action, ctx, &a, pp);
 
     switch (result) {
