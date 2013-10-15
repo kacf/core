@@ -27,10 +27,8 @@
 
 #include <cf3.defs.h>
 
-#ifndef __MINGW32__
 void VerifyUsersPromise(EvalContext *ctx, Promise *pp);
-#else
-static inline void VerifyUsersPromise(EvalContext *ctx, Promise *pp) {}
-#endif
 
+void VerifyOneUsersPromise (const char *puser, User u, PromiseResult *result, enum cfopaction action,
+                            EvalContext *ctx, const Attributes *a, Promise *pp);
 #endif

@@ -1529,7 +1529,6 @@ typedef struct
 {
     UserState policy;
     char *uid;
-    char *user;
     PasswordFormat password_format;
     char *password;
     char *description;

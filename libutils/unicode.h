@@ -25,6 +25,8 @@
 #ifndef UNICODE_H
 #define UNICODE_H
 
+#include <bool.h>
+
 #include <stdint.h>
 
 /**

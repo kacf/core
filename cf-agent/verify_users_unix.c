@@ -24,17 +24,12 @@
 
 #include <verify_users.h>
 
-#include <attributes.h>
 #include <string_lib.h>
 #include <exec_tools.h>
 #include <policy.h>
 #include <misc_lib.h>
 #include <rlist.h>
 #include <pipes.h>
-#include <env_context.h>
-#include <ornaments.h>
-#include <locks.h>
-#include <promises.h>
 #include <files_copy.h>
 #include <files_interfaces.h>
 
@@ -70,8 +65,6 @@ typedef enum
     i_shell,
     i_locked
 } which;
-
-static int UserSanityCheck(Attributes a, Promise *pp);
 
 static const char *GetPlatformSpecificExpirationDate()
 {
@@ -855,6 +848,7 @@ static bool DoCreateUser (const char *puser, User u, enum cfopaction action,
     if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to create user '%s'.", puser);
+        return false;
     }
     else
     {
@@ -919,6 +913,7 @@ static bool DoRemoveUser (const char *puser, enum cfopaction action)
     if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to remove user '%s'.", puser);
+        return false;
     }
     else
     {
@@ -1006,6 +1001,7 @@ static bool DoModifyUser (const char *puser, User u, const struct passwd *passwd
         if (action == cfa_warn || DONTDO)
         {
             Log(LOG_LEVEL_NOTICE, "Need to change password for user '%s'.", puser);
+            return false;
         }
         else
         {
@@ -1022,6 +1018,7 @@ static bool DoModifyUser (const char *puser, User u, const struct passwd *passwd
         {
             Log(LOG_LEVEL_NOTICE, "Need to %s account for user '%s'.",
                 (u.policy == USER_STATE_LOCKED) ? "lock" : "unlock", puser);
+            return false;
         }
         else
         {
@@ -1043,6 +1040,7 @@ static bool DoModifyUser (const char *puser, User u, const struct passwd *passwd
     if (action == cfa_warn || DONTDO)
     {
         Log(LOG_LEVEL_NOTICE, "Need to update user attributes (command '%s').", cmd);
+        return false;
     }
     else if (changemap != 0)
     {
@@ -1065,7 +1063,7 @@ static bool DoModifyUser (const char *puser, User u, const struct passwd *passwd
     return true;
 }
 
-static void VerifyOneUsersPromise (const char *puser, User u, PromiseResult *result, enum cfopaction action,
+void VerifyOneUsersPromise (const char *puser, User u, PromiseResult *result, enum cfopaction action,
                             EvalContext *ctx, const Attributes *a, Promise *pp)
 {
     bool res;
@@ -1135,82 +1133,4 @@ static void VerifyOneUsersPromise (const char *puser, User u, PromiseResult *res
             *result = PROMISE_RESULT_NOOP;
         }
     }
-}
-
-void VerifyUsersPromise(EvalContext *ctx, Promise *pp)
-{
-    Attributes a = { {0} };
-    CfLock thislock;
-    char lockname[CF_BUFSIZE];
-
-    a = GetUserAttributes(ctx, pp);
-
-    if (!UserSanityCheck(a, pp))
-    {
-        return;
-    }
-
-    PromiseBanner(pp);
-
-    snprintf(lockname, CF_BUFSIZE - 1, "user-%s-%d", pp->promiser, a.users.policy);
-
-    thislock = AcquireLock(ctx, lockname, VUQNAME, CFSTARTTIME, a.transaction, pp, false);
-
-    if (thislock.lock == NULL)
-    {
-        return;
-    }
-
-    PromiseResult result = PROMISE_RESULT_NOOP;
-    VerifyOneUsersPromise(pp->promiser, a.users, &result, a.transaction.action, ctx, &a, pp);
-
-    switch (result) {
-    case PROMISE_RESULT_NOOP:
-        cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_NOOP, pp, a, "User promise kept");
-        break;
-    case PROMISE_RESULT_FAIL:
-    case PROMISE_RESULT_DENIED:
-    case PROMISE_RESULT_TIMEOUT:
-    case PROMISE_RESULT_INTERRUPTED:
-    case PROMISE_RESULT_WARN:
-        cfPS(ctx, LOG_LEVEL_ERR, result, pp, a, "KO");
-        break;
-    case PROMISE_RESULT_CHANGE:
-        cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_CHANGE, pp, a, "OK");
-        break;
-    default:
-        ProgrammingError("Unknown promise result");
-        break;
-    }
- 
-
-    YieldCurrentLock(thislock);
-}
-
-/** Pre-check of promise contents **/
-
-static int UserSanityCheck(Attributes a, Promise *pp)
-{
-    User *u = &a.users;
-    switch (u->policy)
-    {
-    case USER_STATE_PRESENT:
-    case USER_STATE_ABSENT:
-    case USER_STATE_LOCKED:
-        break;
-    default:
-        Log(LOG_LEVEL_ERR, "No policy specified for 'users' promise '%s'", pp->promiser);
-        PromiseRef(LOG_LEVEL_ERR, pp);
-        return false;
-    }
-
-    if ((SafeStringLength(u->password) == 0 && u->password_format != PASSWORD_FORMAT_NONE)
-        || (SafeStringLength(u->password) != 0 && u->password_format == PASSWORD_FORMAT_NONE))
-    {
-        Log(LOG_LEVEL_ERR, "Both 'data' and 'format' must be specified in password body for 'users' promise '%s'", pp->promiser);
-        PromiseRef(LOG_LEVEL_ERR, pp);
-        return false;
-    }
-
-    return true;
 }

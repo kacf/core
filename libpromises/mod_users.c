@@ -38,7 +38,6 @@ static const BodySyntax password_body = BodySyntaxNew("password", password_const
 static const ConstraintSyntax users_constraints[] =
 {
     ConstraintSyntaxNewOption("policy", "present,absent,locked", "The promised state of a given user", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewString("user", CF_USERRANGE, "User name", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewInt("uid", CF_INTRANGE, "User id", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewBody("password", &password_body, "User password", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("description", "", "User comment", SYNTAX_STATUS_NORMAL),

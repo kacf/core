@@ -1692,7 +1692,6 @@ User GetUserConstraints(const EvalContext *ctx, const Promise *pp)
 
     u.uid = ConstraintGetRvalValue(ctx, "uid", pp, RVAL_TYPE_SCALAR);
 
-    u.user = ConstraintGetRvalValue(ctx, "user", pp, RVAL_TYPE_SCALAR);
     value = ConstraintGetRvalValue(ctx, "format", pp, RVAL_TYPE_SCALAR);
     u.password_format = PasswordFormatFromString(value);
     u.password = ConstraintGetRvalValue(ctx, "data", pp, RVAL_TYPE_SCALAR);
