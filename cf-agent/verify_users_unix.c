@@ -59,10 +59,6 @@
 #define CFUSR_SETBIT(v,p)   ((v)   |= ((1UL) << (p)))
 #define CFUSR_CLEARBIT(v,p) ((v) &= ~((1UL) << (p)))
 
-#define CFUSR_CMDADD "/usr/sbin/useradd"
-#define CFUSR_CMDDEL "/usr/sbin/userdel"
-#define CFUSR_CMDMOD "/usr/sbin/usermod"
-
 typedef enum
 {
     i_uid,
@@ -227,6 +223,29 @@ static bool ChangePlaintextPasswordUsingLibPam(const char *puser, const char *pa
     }
 }
 
+static bool ClearPasswordAdministrationFlags(const char *puser)
+{
+    (void)puser; // Avoid warning.
+
+#ifdef HAVE_PWDADM
+    const char *cmd_str = PWDADM " -c ";
+    char final_cmd[strlen(cmd_str) + strlen(puser) + 1];
+
+    sprintf(final_cmd, "%s%s", cmd_str, puser);
+
+    int status;
+    status = system(final_cmd);
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+    {
+        Log(LOG_LEVEL_ERR, "Command failed while trying to clear password flags for user '%s'. (Command: '%s')",
+            puser, final_cmd);
+        return false;
+    }
+#endif // HAVE_PWDADM
+
+    return true;
+}
+
 #ifdef HAVE_CHPASSWD
 static bool ChangePasswordHashUsingChpasswd(const char *puser, const char *password)
 {
@@ -266,7 +285,7 @@ static bool ChangePasswordHashUsingChpasswd(const char *puser, const char *passw
         return false;
     }
 
-    return true;
+    return ClearPasswordAdministrationFlags(puser);
 }
 #endif // HAVE_CHPASSWD
 
@@ -492,7 +511,7 @@ static bool SetAccountLocked(const char *puser, const char *hash, bool lock)
 {
     char cmd[CF_BUFSIZE + strlen(hash)];
 
-    strcpy (cmd, CFUSR_CMDMOD);
+    strcpy (cmd, USERMOD);
     StringAppend(cmd, " -e \"", sizeof(cmd));
 
     if (lock)
@@ -776,7 +795,7 @@ static bool DoCreateUser (const char *puser, User u, enum cfopaction action,
     {
         return false;
     }
-    strcpy (cmd, CFUSR_CMDADD);
+    strcpy (cmd, USERADD);
 
     if (u.uid != NULL && strcmp (u.uid, ""))
     {
@@ -886,7 +905,7 @@ static bool DoRemoveUser (const char *puser, enum cfopaction action)
 {
     char cmd[CF_BUFSIZE];
 
-    strcpy (cmd, CFUSR_CMDDEL);
+    strcpy (cmd, USERDEL);
 
     StringAppend(cmd, " ", sizeof(cmd));
     StringAppend(cmd, puser, sizeof(cmd));
@@ -920,7 +939,7 @@ static bool DoModifyUser (const char *puser, User u, const struct passwd *passwd
 {
     char cmd[CF_BUFSIZE];
 
-    strcpy (cmd, CFUSR_CMDMOD);
+    strcpy (cmd, USERMOD);
 
     if (CFUSR_CHECKBIT (changemap, i_uid) != 0)
     {

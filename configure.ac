@@ -600,6 +600,37 @@ AS_IF([test "x$CHPASSWD" != "x"],
       [AC_DEFINE_UNQUOTED(CHPASSWD, ["$CHPASSWD"], [Path to chpasswd tool])]
      )
 
+dnl AIX has this.
+AC_PATH_PROG([PWDADM], [pwdadm])
+AS_IF([test "x$PWDADM" != "x"],
+      [AC_DEFINE(HAVE_PWDADM, 1, [Define if pwdadm tool is present])]
+      [AC_DEFINE_UNQUOTED(PWDADM, ["$PWDADM"], [Path to pwdadm tool])]
+     )
+
+AC_PATH_PROG([USERADD], [useradd])
+AS_IF([test "x$USERADD" != "x"],
+      [AC_DEFINE(HAVE_USERADD, 1, [Define if useradd tool is present])]
+      [AC_DEFINE_UNQUOTED(USERADD, ["$USERADD"], [Path to useradd tool])]
+     ,
+      AC_MSG_ERROR([useradd not found anywhere in path])
+     )
+
+AC_PATH_PROG([USERMOD], [usermod])
+AS_IF([test "x$USERMOD" != "x"],
+      [AC_DEFINE(HAVE_USERMOD, 1, [Define if usermod tool is present])]
+      [AC_DEFINE_UNQUOTED(USERMOD, ["$USERMOD"], [Path to usermod tool])]
+     ,
+      [AC_MSG_ERROR([usermod not found anywhere in path])]
+     )
+
+AC_PATH_PROG([USERDEL], [userdel])
+AS_IF([test "x$USERDEL" != "x"],
+      [AC_DEFINE(HAVE_USERDEL, 1, [Define if userdel tool is present])]
+      [AC_DEFINE_UNQUOTED(USERDEL, ["$USERDEL"], [Path to userdel tool])]
+     ,
+      [AC_MSG_ERROR([userdel not found anywhere in path])]
+     )
+
 AC_CHECK_DECLS(getnetgrent, [], [], [[#include <netdb.h>]])
 AC_CHECK_FUNCS(getnetgrent)
 
