@@ -22,6 +22,7 @@ bundle agent init
       uid => "8765",
       group_primary => "3",
       groups_secondary => { "bin" },
+      home_dir => "/home/johndoe",
       shell => "$(G.cat)",
       description => "Wrong!";
 }
