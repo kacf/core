@@ -717,7 +717,7 @@ static bool VerifyIfUserNeedsModifs (const char *puser, User u, const struct pas
         }
     }
 
-    if (u.group_primary != NULL)
+    if (SafeStringLength(u.group_primary))
     {
         bool group_could_be_gid = (strlen(u.group_primary) == strspn(u.group_primary, "0123456789"));
         int gid;
@@ -760,7 +760,10 @@ static bool VerifyIfUserNeedsModifs (const char *puser, User u, const struct pas
         BufferList *wanted_groups = BufferListNew();
         for (Rlist *ptr = u.groups_secondary; ptr; ptr = ptr->next)
         {
-            BufferListAppend(wanted_groups, BufferNewFrom(RvalScalarValue(ptr->val), strlen(RvalScalarValue(ptr->val)) + 1));
+            if (strcmp(RvalScalarValue(ptr->val), CF_NULL_VALUE) != 0)
+            {
+                BufferListAppend(wanted_groups, BufferNewFrom(RvalScalarValue(ptr->val), strlen(RvalScalarValue(ptr->val)) + 1));
+            }
         }
         TransformGidsToGroups(wanted_groups);
         BufferList *current_groups = BufferListNew();
@@ -804,7 +807,7 @@ static bool DoCreateUser (const char *puser, User u, enum cfopaction action,
         StringAppend(cmd, "\"", sizeof(cmd));
     }
 
-    if (u.description != NULL && strcmp (u.description, ""))
+    if (u.description != NULL)
     {
         StringAppend(cmd, " -c \"", sizeof(cmd));
         StringAppend(cmd, u.description, sizeof(cmd));
@@ -825,9 +828,12 @@ static bool DoCreateUser (const char *puser, User u, enum cfopaction action,
         char sep[2] = { '\0', '\0' };
         for (Rlist *i = u.groups_secondary; i; i = i->next)
         {
-            StringAppend(cmd, sep, sizeof(cmd));
-            StringAppend(cmd, RvalScalarValue(i->val), sizeof(cmd));
-            sep[0] = ',';
+            if (strcmp(RvalScalarValue(i->val), CF_NULL_VALUE) != 0)
+            {
+                StringAppend(cmd, sep, sizeof(cmd));
+                StringAppend(cmd, RvalScalarValue(i->val), sizeof(cmd));
+                sep[0] = ',';
+            }
         }
         StringAppend(cmd, "\"", sizeof(cmd));
     }
@@ -950,12 +956,9 @@ static bool DoModifyUser (const char *puser, User u, const struct passwd *passwd
 
     if (CFUSR_CHECKBIT (changemap, i_comment) != 0)
     {
-        if (strcmp (u.description, ""))
-        {
-            StringAppend(cmd, " -c \"", sizeof(cmd));
-            StringAppend(cmd, u.description, sizeof(cmd));
-            StringAppend(cmd, "\"", sizeof(cmd));
-        }
+        StringAppend(cmd, " -c \"", sizeof(cmd));
+        StringAppend(cmd, u.description, sizeof(cmd));
+        StringAppend(cmd, "\"", sizeof(cmd));
     }
 
     if (CFUSR_CHECKBIT (changemap, i_group) != 0)
@@ -971,9 +974,12 @@ static bool DoModifyUser (const char *puser, User u, const struct passwd *passwd
         char sep[2] = { '\0', '\0' };
         for (Rlist *i = u.groups_secondary; i; i = i->next)
         {
-            StringAppend(cmd, sep, sizeof(cmd));
-            StringAppend(cmd, RvalScalarValue(i->val), sizeof(cmd));
-            sep[0] = ',';
+            if (strcmp(RvalScalarValue(i->val), CF_NULL_VALUE) != 0)
+            {
+                StringAppend(cmd, sep, sizeof(cmd));
+                StringAppend(cmd, RvalScalarValue(i->val), sizeof(cmd));
+                sep[0] = ',';
+            }
         }
         StringAppend(cmd, "\"", sizeof(cmd));
     }

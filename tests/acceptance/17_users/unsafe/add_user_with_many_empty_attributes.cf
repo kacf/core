@@ -1,0 +1,49 @@
+#######################################################
+#
+# Test adding a user with many empty attributes.
+#
+#######################################################
+
+body common control
+{
+      inputs => { "../../default.cf.sub" };
+      bundlesequence  => { default("$(this.promise_filename)") };
+}
+
+#######################################################
+
+bundle agent init
+{
+  # Remove him first, should he already be present.
+  users:
+    "johndoe"
+      policy => "absent";
+}
+
+#######################################################
+
+bundle agent test
+{
+  users:
+    "johndoe"
+      policy => "present",
+      group_primary => "",
+      groups_secondary => { },
+      description => "";
+}
+
+#######################################################
+
+bundle agent check
+{
+  classes:
+    "passwd_ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:[^:]*:[^:]*::[^:]*:[^:]*", "/etc/passwd"));
+    "group_ok" expression => strcmp("0", countlinesmatching("sys:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
+    "ok" and => { "passwd_ok", "group_ok" };
+
+  reports:
+    ok::
+      "$(this.promise_filename) Pass";
+    !ok::
+      "$(this.promise_filename) FAIL";
+}
