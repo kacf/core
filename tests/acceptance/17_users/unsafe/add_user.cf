@@ -6,7 +6,7 @@
 
 body common control
 {
-      inputs => { "../../default.cf.sub" };
+      inputs => { "../../default.cf.sub", "user_queries.cf.sub" };
       bundlesequence  => { default("$(this.promise_filename)") };
 }
 
@@ -33,12 +33,17 @@ bundle agent test
 
 bundle agent check
 {
+  methods:
+    "any" usebundle => user_exists("johndoe", "success", "failure"),
+      classes => default_cf_sub_set_class("methods_run");
+
   classes:
-      "ok" expression => regcmp(".*johndoe.*", execresult("$(G.grep) johndoe /etc/passwd", "noshell"));
+      "ready" expression => "methods_run";
+      "ok" and => { "success", "!failure" };
 
   reports:
-    ok::
+    ok.ready::
       "$(this.promise_filename) Pass";
-    !ok::
+    !ok.ready::
       "$(this.promise_filename) FAIL";
 }

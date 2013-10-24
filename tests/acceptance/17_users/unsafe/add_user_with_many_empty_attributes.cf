@@ -6,7 +6,7 @@
 
 body common control
 {
-      inputs => { "../../default.cf.sub" };
+      inputs => { "../../default.cf.sub", "user_queries.cf.sub" };
       bundlesequence  => { default("$(this.promise_filename)") };
 }
 
@@ -29,21 +29,30 @@ bundle agent test
       policy => "present",
       group_primary => "",
       groups_secondary => { },
-      description => "";
+      description => "",
+      classes => default_cf_sub_if_ok("promise_ok");
 }
 
 #######################################################
 
 bundle agent check
 {
+  methods:
+    any::
+    "any" usebundle => user_is_in_any_secondary_group("johndoe", "sgroup_failure", "sgroup_success"),
+      classes => default_cf_sub_set_class("sgroup_methods_run");
+
+    "any" usebundle => user_has_description("johndoe", "", "desc_success", "desc_failure"),
+      classes => default_cf_sub_set_class("desc_methods_run");
+
   classes:
-    "passwd_ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:[^:]*:[^:]*::[^:]*:[^:]*", "/etc/passwd"));
-    "group_ok" expression => strcmp("0", countlinesmatching("sys:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
-    "ok" and => { "passwd_ok", "group_ok" };
+      "ready" and => { "sgroup_methods_run", "desc_methods_run" };
+      "ok" and => { "sgroup_success", "!sgroup_failure",
+                    "desc_success", "!desc_failure", "promise_ok" };
 
   reports:
-    ok::
+    ok.ready::
       "$(this.promise_filename) Pass";
-    !ok::
+    !ok.ready::
       "$(this.promise_filename) FAIL";
 }

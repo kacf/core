@@ -6,7 +6,7 @@
 
 body common control
 {
-      inputs => { "../../default.cf.sub" };
+      inputs => { "../../default.cf.sub", "user_queries.cf.sub" };
       bundlesequence  => { default("$(this.promise_filename)") };
 }
 
@@ -41,7 +41,7 @@ bundle agent check
     "ok" expression => regcmp(".*Succeeded.*", execresult("sudo su johndoe $(currentdir)$(G.DS)add_user_with_shell.txt", "useshell"));
 
   reports:
-    ok::
+    ok|windows::
       "$(this.promise_filename) Pass";
     !ok::
       "$(this.promise_filename) FAIL";

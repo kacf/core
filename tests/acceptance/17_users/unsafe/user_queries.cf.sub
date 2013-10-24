@@ -1,0 +1,163 @@
+# body common control
+# {
+#   bundlesequence => { "test" };
+# }
+
+# bundle common G
+# {
+#   vars:
+#     "grep" string => "/bin/grep";
+#     "sed" string => "/bin/sed";
+# }
+
+# bundle agent test
+# {
+#   methods:
+#     "any" usebundle => user_is_unlocked("johndoe", "yep", "nope");
+
+#   reports:
+#     "any: $(user_get_password_hash.hash)";
+#     yep::
+#       "Yep!";
+#     nope::
+#       "Nope!";
+# }
+
+bundle agent user_exists(user, true_class, false_class)
+{
+  commands:
+    !windows::
+      "$(G.grep) '^$(user):' /etc/passwd"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+bundle agent user_has_uid(user, uid, true_class, false_class)
+{
+  commands:
+    !windows::
+      "$(G.grep) '^$(user):[^:]*:$(uid):' /etc/passwd"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+
+  reports:
+    windows::
+      "Cannot check uid on Windows!";
+}
+
+bundle agent user_is_in_primary_group(user, group, true_class, false_class)
+{
+  vars:
+    !windows::
+      "no" int => getfields("$(group):.*", "/etc/group", ":", "gid_number");
+
+  commands:
+    !windows::
+      "$(G.grep) '^$(user):[^:]*:[^:]*:$(gid_number[3]):' /etc/passwd"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+bundle agent user_is_in_secondary_group(user, group, true_class, false_class)
+{
+  commands:
+    !windows::
+      "$(G.grep) -E '^$(group):[^:]*:[^:]*:[^:]*,?$(user)(,|$)' /etc/group"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+bundle agent user_is_in_any_secondary_group(user, true_class, false_class)
+{
+  commands:
+    !windows::
+      "$(G.grep) -E '^[^:]*:[^:]*:[^:]*:[^:]*,?$(user)(,|$)' /etc/group"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+bundle agent user_has_home_dir(user, home_dir, true_class, false_class)
+{
+  commands:
+    !windows::
+      "$(G.grep) '^$(user):[^:]*:[^:]*:[^:]*:[^:]*:$(home_dir):' /etc/passwd"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+bundle agent user_has_shell(user, shell, true_class, false_class)
+{
+  commands:
+    !windows::
+      "$(G.grep) '^$(user):[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:$(shell)$' /etc/passwd"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+
+  reports:
+    windows::
+      "Cannot check shell on Windows!";
+}
+
+bundle agent user_has_description(user, description, true_class, false_class)
+{
+  commands:
+    !windows::
+      "$(G.grep) '^$(user):[^:]*:[^:]*:[^:]*:$(description):' /etc/passwd"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+bundle agent user_has_password_hash(user, hash, true_class, false_class)
+{
+  vars:
+    "escaped_hash" string => escape("$(hash)");
+
+  commands:
+    !windows::
+      "$(G.grep) '^$(user):$(escaped_hash):' /etc/passwd"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+bundle agent user_get_password_hash(user)
+{
+  vars:
+    !windows::
+      "hash" string => execresult("$(G.grep) '^$(user):' /etc/shadow | $(G.sed) -e 's/[^:]*:\([^:]*\):.*/\1/'", "useshell");
+    windows::
+      "hash" string => "FIXME";
+}
+
+bundle agent user_is_locked(user, true_class, false_class)
+{
+  commands:
+    !windows::
+      # Notice the [^:] without * at the end. That field (expiry) should be *something*.
+      "$(G.grep) '^$(user):![^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:][^:]*:' /etc/shadow"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+bundle agent user_is_unlocked(user, true_class, false_class)
+{
+  commands:
+    !windows::
+      # Notice the empty field at the end. That field (expiry) should be gone.
+      "$(G.grep) '^$(user):[^:!]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*::' /etc/shadow"
+        contain => no_output_shell,
+        classes => on_success("$(true_class)", "$(false_class)");
+}
+
+body classes on_success(true_class, false_class)
+{
+  promise_repaired => { "$(true_class)" };
+  repair_failed    => { "$(false_class)" };
+  cancel_notkept   => { "$(true_class)" };
+  cancel_repaired  => { "$(false_class)" };
+}
+
+body contain no_output_shell
+{
+  no_output => "true";
+  useshell => "useshell";
+}

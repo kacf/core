@@ -6,7 +6,7 @@
 
 body common control
 {
-      inputs => { "../../default.cf.sub" };
+      inputs => { "../../default.cf.sub", "user_queries.cf.sub" };
       bundlesequence  => { default("$(this.promise_filename)") };
 }
 
@@ -65,14 +65,32 @@ bundle agent test
 
 bundle agent check
 {
-  classes:
-    "1_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)"));
-    "2_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile).2"));
-    "ok" and => { "1_ok", "2_ok" };
-
   reports:
     ok::
       "$(this.promise_filename) Pass";
     !ok::
+      "$(this.promise_filename) FAIL";
+
+  methods:
+    "any" usebundle => user_is_in_secondary_group("johndoe", "bin", "bin_success", "bin_failure"),
+      classes => default_cf_sub_set_class("bin_methods_run");
+    "any" usebundle => user_is_in_secondary_group("johndoe", "sys", "sys_success", "sys_failure"),
+      classes => default_cf_sub_set_class("sys_methods_run");
+
+  classes:
+    "1_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)"));
+    "2_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile).2"));
+
+  classes:
+      "ready" and => { "bin_methods_run", "sys_methods_run" };
+    !windows::
+      "ok" and => { "bin_success", "!bin_failure", "sys_success", "!sys_failure", "1_ok", "2_ok" };
+    windows::
+      "ok" and => { "bin_success", "!bin_failure", "sys_success", "!sys_failure" };
+
+  reports:
+    ok.ready::
+      "$(this.promise_filename) Pass";
+    !ok.ready::
       "$(this.promise_filename) FAIL";
 }

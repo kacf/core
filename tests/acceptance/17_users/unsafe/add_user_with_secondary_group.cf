@@ -6,7 +6,7 @@
 
 body common control
 {
-      inputs => { "../../default.cf.sub" };
+      inputs => { "../../default.cf.sub", "user_queries.cf.sub" };
       bundlesequence  => { default("$(this.promise_filename)") };
 }
 
@@ -54,12 +54,24 @@ bundle agent test
 
 bundle agent check
 {
+  methods:
+    "any" usebundle => user_is_in_secondary_group("johndoe", "bin", "success", "failure"),
+      classes => default_cf_sub_set_class("methods_run");
+
   classes:
-    "ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)"));
+    !windows::
+      "content_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)"));
+
+  classes:
+      "ready" expression => "methods_run";
+    !windows::
+      "ok" and => { "success", "!failure", "content_ok" };
+    windows::
+      "ok" and => { "success", "!failure" };
 
   reports:
-    ok::
+    ok.ready::
       "$(this.promise_filename) Pass";
-    !ok::
+    !ok.ready::
       "$(this.promise_filename) FAIL";
 }
