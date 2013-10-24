@@ -26,9 +26,13 @@
 #define CFENGINE_VERIFY_USERS_H
 
 #include <cf3.defs.h>
+#include <bufferlist.h>
 
 void VerifyUsersPromise(EvalContext *ctx, Promise *pp);
 
 void VerifyOneUsersPromise (const char *puser, User u, PromiseResult *result, enum cfopaction action,
                             EvalContext *ctx, const Attributes *a, Promise *pp);
+
+bool AreListsOfGroupsEqual (const BufferList *groups1, const BufferList *groups2);
+
 #endif
