@@ -30,6 +30,16 @@ bundle agent user_exists(user, true_class, false_class)
       "$(G.grep) '^$(user):' /etc/passwd"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
+  vars:
+    windows::
+      "output" string => execresult("wmic useraccount where name='$(user)' get name", "useshell");
+      "reg" string => escape("$(user)");
+  classes:
+    windows::
+      "$(true_class)" expression => regcmp(".*$(reg).*", "$(output)"),
+        scope => "namespace";
+      "$(false_class)" not => regcmp(".*$(reg).*", "$(output)"),
+        scope => "namespace";
 }
 
 bundle agent user_has_uid(user, uid, true_class, false_class)

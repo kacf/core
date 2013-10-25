@@ -223,10 +223,15 @@ runtest() {
     ln -sf "$CF_PROMISES" "$WORKDIR/bin"
     ln -sf "$CF_SERVERD" "$WORKDIR/bin"
     ln -sf "$CF_KEY" "$WORKDIR/bin"
+    if uname | grep MINGW > /dev/null; then
+        PLATFORM_WORKDIR="$(echo $WORKDIR | sed -e 's%^/\([a-cA-Z]\)/%\1:/%' | sed -e 's%/%\\%g')"
+    else
+        PLATFORM_WORKDIR="$WORKDIR"
+    fi
 
     echo "#!/bin/sh
-CFENGINE_TEST_OVERRIDE_WORKDIR=\"$WORKDIR\"
-TEMP=\"$WORKDIR/tmp\"
+CFENGINE_TEST_OVERRIDE_WORKDIR=\"$PLATFORM_WORKDIR\"
+TEMP=\"$PLATFORM_WORKDIR${DS}tmp\"
 export CFENGINE_TEST_OVERRIDE_WORKDIR TEMP
 
 \"$AGENT\" $VERBOSE -Kf \"$TEST\" -D AUTO,DEBUG 2>&1
