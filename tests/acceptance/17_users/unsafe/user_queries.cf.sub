@@ -114,7 +114,7 @@ bundle agent user_has_password_hash(user, hash, true_class, false_class)
 
   commands:
     !windows::
-      "$(G.grep) '^$(user):$(escaped_hash):' /etc/passwd"
+      "$(G.grep) '^$(user):$(escaped_hash):' /etc/shadow"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
 }

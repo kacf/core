@@ -38,15 +38,17 @@ body action test_action
 
 bundle agent check
 {
-  classes:
-    "ok_passwd" not => strcmp("0", countlinesmatching("johndoe:[^:]*:[^:]*:[^:]*:[^:]*:.*", "/etc/passwd"));
-    "ok_shadow" not => strcmp("0", countlinesmatching("johndoe:[^:!]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*::.*", "/etc/shadow"));
+  methods:
+    "any" usebundle => user_is_unlocked("johndoe", "success", "failure"),
+      classes => default_cf_sub_set_class("methods_run");
 
-    "ok" and => { "ok_passwd", "ok_shadow" };
+  classes:
+      "ready" expression => "methods_run";
+      "ok" and => { "success", "!failure" };
 
   reports:
-    ok::
+    ok.ready::
       "$(this.promise_filename) Pass";
-    !ok::
+    !ok.ready::
       "$(this.promise_filename) FAIL";
 }
