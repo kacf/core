@@ -72,20 +72,41 @@ body password test_password
 
 bundle agent check
 {
-  vars:
-    "hash" string => escape("$(init.hash)");
+  methods:
+    "any" usebundle => user_has_uid("johndoe", "8765", "uid_success", "uid_failure"),
+      classes => default_cf_sub_set_class("uid_methods_run");
+
+    "any" usebundle => user_is_in_primary_group("johndoe", "sys", "pgroup_success", "pgroup_failure"),
+      classes => default_cf_sub_set_class("pgroup_methods_run");
+
+    "any" usebundle => user_is_in_secondary_group("johndoe", "bin", "sgroup_success", "sgroup_failure"),
+      classes => default_cf_sub_set_class("sgroup_methods_run");
+
+    "any" usebundle => user_is_in_secondary_group("johndoe", "sys", "not_sgroup_failure", "not_sgroup_success"),
+      classes => default_cf_sub_set_class("not_sgroup_methods_run");
+
+    "any" usebundle => user_has_home_dir("johndoe", "/johns_old_home_dir", "home_success", "home_failure"),
+      classes => default_cf_sub_set_class("home_methods_run");
+
+    "any" usebundle => user_has_shell("johndoe", "$(G.cat)", "shell_success", "shell_failure"),
+      classes => default_cf_sub_set_class("shell_methods_run");
+
+    "any" usebundle => user_has_description("johndoe", "Good user", "desc_success", "desc_failure"),
+      classes => default_cf_sub_set_class("desc_methods_run");
+
+    "any" usebundle => user_has_password_hash("johndoe", "$(init.hash)", "hash_success", "hash_failure"),
+      classes => default_cf_sub_set_class("hash_methods_run");
 
   classes:
-    "passwd_ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:8765:3:Good user:/johns_old_home_dir:$(G.cat)", "/etc/passwd"));
-    "bin_group_ok" not => strcmp("0", countlinesmatching("bin:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
-    "sys_group_ok" expression => strcmp("0", countlinesmatching("sys:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
-    "shadow_ok" not => strcmp("0", countlinesmatching("johndoe:$(hash):.*", "/etc/shadow"));
-
-    "ok" and => { "passwd_ok", "bin_group_ok", "sys_group_ok", "shadow_ok" };
+      "ready" and => { "uid_methods_run", "pgroup_methods_run", "sgroup_methods_run", "not_sgroup_methods_run",
+                       "home_methods_run", "shell_methods_run", "desc_methods_run", "hash_methods_run" };
+      "ok" and => { "uid_success", "!uid_failure", "pgroup_success", "!pgroup_failure", "sgroup_success", "!sgroup_failure",
+                    "not_sgroup_success", "!not_sgroup_failure", "hash_success", "!hash_failure",
+                    "home_success", "!home_failure", "shell_success", "!shell_failure", "desc_success", "!desc_failure",  };
 
   reports:
-    ok::
+    ok.ready::
       "$(this.promise_filename) Pass";
-    !ok::
+    !ok.ready::
       "$(this.promise_filename) FAIL";
 }

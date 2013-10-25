@@ -39,14 +39,30 @@ bundle agent test
 
 bundle agent check
 {
+  methods:
+    windows::
+      "any" usebundle => user_is_in_primary_group("johndoe", "bin", "pgroup_failure", "pgroup_success"),
+        classes => default_cf_sub_set_class("pgroup_methods_run");
+    # Unix hosts cannot remove the primary group.
+    !windows::
+      "any" usebundle => user_is_in_primary_group("johndoe", "bin", "pgroup_success", "pgroup_failure"),
+        classes => default_cf_sub_set_class("pgroup_methods_run");
+
+    any::
+    "any" usebundle => user_is_in_any_secondary_group("johndoe", "sgroup_failure", "sgroup_success"),
+      classes => default_cf_sub_set_class("sgroup_methods_run");
+
+    "any" usebundle => user_has_description("johndoe", "", "desc_success", "desc_failure"),
+      classes => default_cf_sub_set_class("desc_methods_run");
+
   classes:
-    "passwd_ok" not => strcmp("0", countlinesmatching("johndoe:[^:]*:[^:]*:[^:]*::[^:]*:[^:]*", "/etc/passwd"));
-    "group_ok" expression => strcmp("0", countlinesmatching("sys:[^:]*:[^:]*:[^:]*johndoe.*", "/etc/group"));
-    "ok" and => { "passwd_ok", "group_ok" };
+      "ready" and => { "pgroup_methods_run", "sgroup_methods_run", "desc_methods_run" };
+      "ok" and => { "pgroup_success", "!pgroup_failure", "sgroup_success", "!sgroup_failure",
+                    "desc_success", "!desc_failure",  };
 
   reports:
-    ok::
+    ok.ready::
       "$(this.promise_filename) Pass";
-    !ok::
+    !ok.ready::
       "$(this.promise_filename) FAIL";
 }
