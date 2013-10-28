@@ -20,8 +20,8 @@ bundle agent init
       policy => "present",
       password => init_password,
       uid => "8765",
-      group_primary => "3",
-      groups_secondary => { "bin" },
+      group_primary => "$(user_tests.gid2)",
+      groups_secondary => { "$(user_tests.group1)" },
       home_dir => "/home/johndoe",
       shell => "$(G.cat)",
       description => "Wrong!";
@@ -46,9 +46,8 @@ bundle agent test
       policy => "present",
       password => test_password,
       uid => "9876",
-      # "2" is "bin" on most systems.
-      group_primary => "2",
-      groups_secondary => { "sys" },
+      group_primary => "$(user_tests.gid1)",
+      groups_secondary => { "$(user_tests.group2)" },
       home_dir => "/user_directories/johndoe",
       shell => "$(G.echo)",
       description => "$(desc_string)";
@@ -68,13 +67,13 @@ bundle agent check
     "any" usebundle => user_has_uid("johndoe", "9876", "uid_success", "uid_failure"),
       classes => default_cf_sub_set_class("uid_methods_run");
 
-    "any" usebundle => user_is_in_primary_group("johndoe", "bin", "pgroup_success", "pgroup_failure"),
+    "any" usebundle => user_is_in_primary_group("johndoe", "$(user_tests.group1)", "pgroup_success", "pgroup_failure"),
       classes => default_cf_sub_set_class("pgroup_methods_run");
 
-    "any" usebundle => user_is_in_secondary_group("johndoe", "sys", "sgroup_success", "sgroup_failure"),
+    "any" usebundle => user_is_in_secondary_group("johndoe", "$(user_tests.group2)", "sgroup_success", "sgroup_failure"),
       classes => default_cf_sub_set_class("sgroup_methods_run");
 
-    "any" usebundle => user_is_in_secondary_group("johndoe", "bin", "not_sgroup_failure", "not_sgroup_success"),
+    "any" usebundle => user_is_in_secondary_group("johndoe", "$(user_tests.group1)", "not_sgroup_failure", "not_sgroup_success"),
       classes => default_cf_sub_set_class("not_sgroup_methods_run");
 
     "any" usebundle => user_has_home_dir("johndoe", "/user_directories/johndoe", "home_success", "home_failure"),

@@ -26,17 +26,15 @@ bundle agent init
     "attributes_keep"
       policy => "present",
       uid => "9878",
-      # "2" is "bin" on most systems.
-      group_primary => "2",
-      groups_secondary => { "sys" },
+      group_primary => "$(user_tests.gid1)",
+      groups_secondary => { "$(user_tests.group2)" },
       shell => "$(G.echo)",
       description => "Description";
     "attributes_repair"
       policy => "present",
       uid => "9877",
-      # "2" is "bin" on most systems.
-      group_primary => "2",
-      groups_secondary => { "sys" },
+      group_primary => "$(user_tests.gid1)",
+      groups_secondary => { "$(user_tests.group2)" },
       shell => "$(G.echo)",
       description => "Description";
     "password_keep"
@@ -75,18 +73,16 @@ bundle agent test
       classes => set_classes_kept_repaired("attributes_keep", "not_attributes_keep"),
       policy => "present",
       uid => "9878",
-      # "2" is "bin" on most systems.
-      group_primary => "2",
-      groups_secondary => { "sys" },
+      group_primary => "$(user_tests.gid1)",
+      groups_secondary => { "$(user_tests.group2)" },
       shell => "$(G.echo)",
       description => "Description";
     "attributes_repair"
       classes => set_classes_kept_repaired("not_attributes_repair", "attributes_repair"),
       policy => "present",
       uid => "9877",
-      # "2" is "bin" on most systems.
-      group_primary => "2",
-      groups_secondary => { "sys" },
+      group_primary => "$(user_tests.gid1)",
+      groups_secondary => { "$(user_tests.group2)" },
       shell => "$(G.cat)",
       description => "Description";
     "password_keep"

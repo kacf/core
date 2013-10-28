@@ -18,8 +18,8 @@ bundle agent init
   users:
     "johndoe"
       policy => "present",
-      group_primary => "bin",
-      groups_secondary => { "sys" },
+      group_primary => "$(user_tests.group1)",
+      groups_secondary => { "$(user_tests.group2)" },
       description => "Description";
 }
 
@@ -41,11 +41,11 @@ bundle agent check
 {
   methods:
     windows::
-      "any" usebundle => user_is_in_primary_group("johndoe", "bin", "pgroup_failure", "pgroup_success"),
+      "any" usebundle => user_is_in_primary_group("johndoe", "$(user_tests.group1)", "pgroup_failure", "pgroup_success"),
         classes => default_cf_sub_set_class("pgroup_methods_run");
     # Unix hosts cannot remove the primary group.
     !windows::
-      "any" usebundle => user_is_in_primary_group("johndoe", "bin", "pgroup_success", "pgroup_failure"),
+      "any" usebundle => user_is_in_primary_group("johndoe", "$(user_tests.group1)", "pgroup_success", "pgroup_failure"),
         classes => default_cf_sub_set_class("pgroup_methods_run");
 
     any::

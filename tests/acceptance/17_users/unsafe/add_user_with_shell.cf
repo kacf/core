@@ -38,11 +38,12 @@ bundle agent check
     "currentdir" string => dirname("$(this.promise_filename)");
 
   classes:
-    "ok" expression => regcmp(".*Succeeded.*", execresult("sudo su johndoe $(currentdir)$(G.DS)add_user_with_shell.txt", "useshell"));
+    !windows::
+      "ok" expression => regcmp(".*Succeeded.*", execresult("sudo su johndoe $(currentdir)$(G.DS)add_user_with_shell.txt", "useshell"));
 
   reports:
     ok|windows::
       "$(this.promise_filename) Pass";
-    !ok::
+    !ok.!windows::
       "$(this.promise_filename) FAIL";
 }

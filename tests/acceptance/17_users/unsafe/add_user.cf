@@ -27,6 +27,9 @@ bundle agent test
   users:
     "johndoe"
       policy => "present";
+reports:
+  "$(G.patharray[$(G.paths)])$(G.DS)$(G.cmds)$(G.exeext)";
+
 }
 
 #######################################################

@@ -41,19 +41,19 @@ bundle agent test
   users:
     "johndoe"
       policy => "present",
-      # "2" should be "bin" on most systems.
-      group_primary => "2";
+      group_primary => "$(user_tests.gid1)";
 
   commands:
-    "sudo -u johndoe $(G.touch) $(G.testfile)"
-      contain => test_contain_body;
+    !windows::
+      "sudo -u johndoe $(G.touch) $(G.testfile)"
+        contain => test_contain_body;
 }
 
 #######################################################
 
 body perms check_perms_body
 {
-  groups => { "2" };
+  groups => { "$(user_tests.gid1)" };
 }
 
 body classes check_classes_body
@@ -72,6 +72,6 @@ bundle agent check
   reports:
     (ok.!not_ok)|windows::
       "$(this.promise_filename) Pass";
-    !ok|not_ok::
+    (!ok|not_ok).!windows::
       "$(this.promise_filename) FAIL";
 }

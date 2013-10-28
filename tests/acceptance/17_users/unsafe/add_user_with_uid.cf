@@ -72,6 +72,6 @@ bundle agent check
   reports:
     (ok.!not_ok)|windows::
       "$(this.promise_filename) Pass";
-    !ok|not_ok::
+    (!ok|not_ok).!windows::
       "$(this.promise_filename) FAIL";
 }

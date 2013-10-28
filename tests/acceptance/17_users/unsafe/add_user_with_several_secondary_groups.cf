@@ -14,13 +14,13 @@ body common control
 
 body perms init_perms_body_bin
 {
-  groups => { "bin" };
+  groups => { "$(user_tests.group1)" };
   mode => "664";
 }
 
 body perms init_perms_body_sys
 {
-  groups => { "sys" };
+  groups => { "$(user_tests.group2)" };
   mode => "664";
 }
 
@@ -52,13 +52,14 @@ bundle agent test
   users:
     "johndoe"
       policy => "present",
-      groups_secondary => { "bin", "sys" };
+      groups_secondary => { "$(user_tests.group1)", "$(user_tests.group2)" };
 
   commands:
-    "sudo -u johndoe /bin/sh -c '$(G.echo) Succeeded > $(G.testfile)'"
-      contain => test_contain_body;
-    "sudo -u johndoe /bin/sh -c '$(G.echo) Succeeded > $(G.testfile).2'"
-      contain => test_contain_body;
+    !windows::
+      "sudo -u johndoe /bin/sh -c '$(G.echo) Succeeded > $(G.testfile)'"
+        contain => test_contain_body;
+      "sudo -u johndoe /bin/sh -c '$(G.echo) Succeeded > $(G.testfile).2'"
+        contain => test_contain_body;
 }
 
 #######################################################
@@ -72,9 +73,9 @@ bundle agent check
       "$(this.promise_filename) FAIL";
 
   methods:
-    "any" usebundle => user_is_in_secondary_group("johndoe", "bin", "bin_success", "bin_failure"),
+    "any" usebundle => user_is_in_secondary_group("johndoe", "$(user_tests.group1)", "bin_success", "bin_failure"),
       classes => default_cf_sub_set_class("bin_methods_run");
-    "any" usebundle => user_is_in_secondary_group("johndoe", "sys", "sys_success", "sys_failure"),
+    "any" usebundle => user_is_in_secondary_group("johndoe", "$(user_tests.group2)", "sys_success", "sys_failure"),
       classes => default_cf_sub_set_class("sys_methods_run");
 
   classes:

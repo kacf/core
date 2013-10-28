@@ -23,6 +23,20 @@
 #       "Nope!";
 # }
 
+bundle common user_tests
+{
+  vars:
+    !windows::
+      "group1" string => "bin";
+      "group2" string => "sys";
+      "gid1" string => "2";
+      "gid2" string => "3";
+
+    windows::
+      "group1" string => "Users";
+      "group2" string => "Administrators";
+}
+
 bundle agent user_exists(user, true_class, false_class)
 {
   commands:
@@ -32,7 +46,7 @@ bundle agent user_exists(user, true_class, false_class)
         classes => on_success("$(true_class)", "$(false_class)");
   vars:
     windows::
-      "output" string => execresult("wmic useraccount where name='$(user)' get name", "useshell");
+      "output" string => execresult("net user $(user)", "useshell");
       "reg" string => escape("$(user)");
   classes:
     windows::
@@ -66,6 +80,10 @@ bundle agent user_is_in_primary_group(user, group, true_class, false_class)
       "$(G.grep) '^$(user):[^:]*:[^:]*:$(gid_number[3]):' /etc/passwd"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
+
+  methods:
+    windows::
+      "redirect" usebundle => user_is_in_secondary_group("$(user)", "$(group)", "$(true_class)", "$(false_class)");
 }
 
 bundle agent user_is_in_secondary_group(user, group, true_class, false_class)
@@ -75,6 +93,17 @@ bundle agent user_is_in_secondary_group(user, group, true_class, false_class)
       "$(G.grep) -E '^$(group):[^:]*:[^:]*:[^:]*,?$(user)(,|$)' /etc/group"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
+
+  vars:
+    windows::
+      "output" string => execresult("net user $(user)", "useshell");
+      "reg" string => escape("$(group)");
+  classes:
+    windows::
+      "$(true_class)" expression => regcmp(".*Local Group Memberships *(\*[a-zA-Z0-9]* *)* *$(reg).*", "$(output)"),
+        scope => "namespace";
+      "$(false_class)" not => regcmp(".*Local Group Memberships *(\*[a-zA-Z0-9]* *)* *$(reg).*", "$(output)"),
+        scope => "namespace";
 }
 
 bundle agent user_is_in_any_secondary_group(user, true_class, false_class)
@@ -84,6 +113,16 @@ bundle agent user_is_in_any_secondary_group(user, true_class, false_class)
       "$(G.grep) -E '^[^:]*:[^:]*:[^:]*:[^:]*,?$(user)(,|$)' /etc/group"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
+
+  vars:
+    windows::
+      "output" string => execresult("net user $(user)", "useshell");
+  classes:
+    windows::
+      "$(true_class)" expression => regcmp(".*Local Group Memberships *\*None.*", "$(output)"),
+        scope => "namespace";
+      "$(false_class)" not => regcmp(".*Local Group Memberships *\*None.*", "$(output)"),
+        scope => "namespace";
 }
 
 bundle agent user_has_home_dir(user, home_dir, true_class, false_class)
@@ -93,6 +132,17 @@ bundle agent user_has_home_dir(user, home_dir, true_class, false_class)
       "$(G.grep) '^$(user):[^:]*:[^:]*:[^:]*:[^:]*:$(home_dir):' /etc/passwd"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
+
+  vars:
+    windows::
+      "output" string => execresult("net user $(user)", "useshell");
+      "reg" string => escape("$(home_dir)");
+  classes:
+    windows::
+      "$(true_class)" expression => regcmp(".*Home directory *$(reg).*", "$(output)"),
+        scope => "namespace";
+      "$(false_class)" not => regcmp(".*Home directory *$(reg).*", "$(output)"),
+        scope => "namespace";
 }
 
 bundle agent user_has_shell(user, shell, true_class, false_class)
@@ -115,6 +165,16 @@ bundle agent user_has_description(user, description, true_class, false_class)
       "$(G.grep) '^$(user):[^:]*:[^:]*:[^:]*:$(description):' /etc/passwd"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
+
+  vars:
+    windows::
+      "output" string => execresult("net user $(user)", "useshell");
+  classes:
+    windows::
+      "$(true_class)" expression => regcmp(".*Full Name *$(description).*", "$(output)"),
+        scope => "namespace";
+      "$(false_class)" not => regcmp(".*Full Name *$(description).*", "$(output)"),
+        scope => "namespace";
 }
 
 bundle agent user_has_password_hash(user, hash, true_class, false_class)

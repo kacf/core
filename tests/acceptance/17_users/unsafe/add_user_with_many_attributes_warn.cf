@@ -32,9 +32,8 @@ bundle agent test
       action => test_action,
       policy => "present",
       uid => "9876",
-      # "2" is "bin" on most systems.
-      group_primary => "2",
-      groups_secondary => { "sys" },
+      group_primary => "$(user_tests.gid1)",
+      groups_secondary => { "$(user_tests.group2)" },
       password => test_password,
       shell => "$(G.echo)",
       description => "$(desc_string)";
