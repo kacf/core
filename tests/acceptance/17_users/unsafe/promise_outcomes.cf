@@ -26,14 +26,14 @@ bundle agent init
     "attributes_keep"
       policy => "present",
       uid => "9878",
-      group_primary => "$(user_tests.gid1)",
+      group_primary => "$(user_tests.group1)",
       groups_secondary => { "$(user_tests.group2)" },
       shell => "$(G.echo)",
       description => "Description";
     "attributes_repair"
       policy => "present",
       uid => "9877",
-      group_primary => "$(user_tests.gid1)",
+      group_primary => "$(user_tests.group1)",
       groups_secondary => { "$(user_tests.group2)" },
       shell => "$(G.echo)",
       description => "Description";
@@ -79,7 +79,7 @@ bundle agent test
       classes => set_classes_kept_repaired("attributes_keep", "not_attributes_keep"),
       policy => "present",
       uid => "9878",
-      group_primary => "$(user_tests.gid1)",
+      group_primary => "$(user_tests.group1)",
       groups_secondary => { "$(user_tests.group2)" },
       shell => "$(G.echo)",
       description => "Description";
@@ -87,8 +87,8 @@ bundle agent test
       classes => set_classes_kept_repaired("not_attributes_repair", "attributes_repair"),
       policy => "present",
       uid => "9877",
-      group_primary => "$(user_tests.gid1)",
-      groups_secondary => { "$(user_tests.group2)" },
+      group_primary => "$(user_tests.group1)",
+      groups_secondary => {  },
       shell => "$(G.cat)",
       description => "Description";
     "password_keep"

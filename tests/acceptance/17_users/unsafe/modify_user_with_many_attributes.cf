@@ -46,7 +46,7 @@ bundle agent test
       policy => "present",
       password => test_password,
       uid => "9876",
-      group_primary => "$(user_tests.gid1)",
+      group_primary => "$(user_tests.group1)",
       groups_secondary => { "$(user_tests.group2)" },
       home_dir => "/user_directories/johndoe",
       shell => "$(G.echo)",

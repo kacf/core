@@ -229,6 +229,16 @@ bundle agent user_is_locked(user, true_class, false_class)
       "$(G.grep) '^$(user):![^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:][^:]*:' /etc/shadow"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
+
+  vars:
+    windows::
+      "output" string => execresult("net user $(user)", "useshell");
+  classes:
+    windows::
+      "$(true_class)" expression => regcmp(".*Account active *No.*", "$(output)"),
+        scope => "namespace";
+      "$(false_class)" not => regcmp(".*Account active *No.*", "$(output)"),
+        scope => "namespace";
 }
 
 bundle agent user_is_unlocked(user, true_class, false_class)
@@ -239,6 +249,16 @@ bundle agent user_is_unlocked(user, true_class, false_class)
       "$(G.grep) '^$(user):[^:!]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*::' /etc/shadow"
         contain => no_output_shell,
         classes => on_success("$(true_class)", "$(false_class)");
+
+  vars:
+    windows::
+      "output" string => execresult("net user $(user)", "useshell");
+  classes:
+    windows::
+      "$(true_class)" expression => regcmp(".*Account active *Yes.*", "$(output)"),
+        scope => "namespace";
+      "$(false_class)" not => regcmp(".*Account active *Yes.*", "$(output)"),
+        scope => "namespace";
 }
 
 body classes on_success(true_class, false_class)
