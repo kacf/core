@@ -16,39 +16,26 @@ vars:
   "cmds" slist => { "date", "diff", "echo", "egrep", "false", "grep", "gzip", "hexdump",
                     "ln", "mkdir", "od", "perl", "printf", "pwd", "rm", "sort", "touch",
                     "true", "wc", "cat", "sed" };
-  "paths" slist => {
-                    "/bin",
-                    "/usr/bin",
-                    "/usr/local/bin",
-                    "/usr/contrib/bin",
-                    "c:\mingw\msys\1.0\bin",
-                   };
-  "patharray[$(paths)]" string => "$(paths)";
-  "classarray[$(paths)]" string => canonify("$(paths)");
+
+  !windows::
+    "paths[bin]" string                    => "/bin";
+    "paths[usr_bin]" string                => "/usr/bin";
+    "paths[usr_local_bin]" string          => "/usr/local/bin";
+    "paths[usr_contrib_bin]" string        => "/usr/contrib/bin";
+  windows::
+    "paths[mingw_msys_1_0_bin]" string     => "c:\\mingw\\msys\\1.0\\bin";
+    "paths[msys_bin]" string               => "c:\\msys\\bin";
+
+  any::
+  "paths_indices" slist => getindices("paths");
 
 classes:
-  "$(classarray[$(paths)])_$(cmds)" expression => fileexists("$(patharray[$(paths)])$(DS)$(cmds)$(exeext)");
+  "$(paths_indices)_$(cmds)" expression => fileexists("$(paths[$(paths_indices)])$(DS)$(cmds)$(exeext)");
+  "has_$(cmds)" expression => "$(paths_indices)_$(cmds)";
 
 vars:
-  "$(cmds)" string => "$(patharray[$(paths)])$(DS)$(cmds)$(exeext)",
-    ifvarclass => "$(classarray[$(paths)])_$(cmds)";
-
-  # "bin_$(cmds)" expression => fileexists("/bin/$(cmds)");
-  # "usr_bin_$(cmds)" expression => fileexists("/usr/bin/$(cmds)");
-  # "usr_local_bin_$(cmds)" expression => fileexists("/usr/local/bin/$(cmds)");
-  # "usr_contrib_bin_$(cmds)" expression => fileexists("/usr/contrib/bin/$(cmds)");
-  # canonify("/bin/$(cmds)") expression => fileexists("/bin/$(cmds)");
-  # "has_$(cmds)" or => { "bin_$(cmds)", "usr_bin_$(cmds)" };
-
-
-  # "$(cmds)"  string => "/bin/$(cmds)",
-  #     ifvarclass => "bin_$(cmds)";
-  # "$(cmds)"  string => "/usr/bin/$(cmds)",
-  #     ifvarclass => "!bin_$(cmds).usr_bin_$(cmds)";
-  # "$(cmds)"  string => "/usr/local/bin/$(cmds)",
-  #     ifvarclass => "!bin_$(cmds).!usr_bin_$(cmds).usr_local_bin_$(cmds)";
-  # "$(cmds)"  string => "/usr/contrib/bin/$(cmds)",
-  #     ifvarclass => "!bin_$(cmds).!usr_bin_$(cmds).!usr_local_bin_$(cmds).usr_contrib_bin_$(cmds)";
+  "$(cmds)" string => "$(paths[$(paths_indices)])$(DS)$(cmds)$(exeext)",
+    ifvarclass => "$(paths_indices)_$(cmds)";
 
 classes:
   "temp_declared" not => strcmp(getenv("TEMP", "65536"), "");
