@@ -55,8 +55,12 @@ bundle agent test
 
 body password test_password
 {
-  format => "hash";
-  data => "$(hash)";
+  !windows::
+    format => "hash";
+    data => "$(hash)";
+  windows::
+    format => "plaintext";
+    data => "NewPassword";
 }
 
 #######################################################
@@ -85,15 +89,28 @@ bundle agent check
     "any" usebundle => user_has_description("johndoe", "$(test.desc_string)", "desc_success", "desc_failure"),
       classes => default_cf_sub_set_class("desc_methods_run");
 
-    "any" usebundle => user_has_password_hash("johndoe", "$(test.hash)", "hash_success", "hash_failure"),
-      classes => default_cf_sub_set_class("hash_methods_run");
+    !windows::
+      "any" usebundle => user_has_password_hash("johndoe", "$(test.hash)", "hash_success", "hash_failure"),
+        classes => default_cf_sub_set_class("hash_methods_run");
+    windows::
+      "any" usebundle => user_has_password("johndoe", "NewPassword", "hash_success", "hash_failure"),
+        classes => default_cf_sub_set_class("hash_methods_run");
 
   classes:
       "ready" and => { "uid_methods_run", "pgroup_methods_run", "sgroup_methods_run", "not_sgroup_methods_run",
                        "home_methods_run", "shell_methods_run", "desc_methods_run", "hash_methods_run" };
-      "ok" and => { "uid_success", "!uid_failure", "pgroup_success", "!pgroup_failure", "sgroup_success", "!sgroup_failure",
-                    "not_sgroup_success", "!not_sgroup_failure", "hash_success", "!hash_failure",
-                    "home_success", "!home_failure", "shell_success", "!shell_failure", "desc_success", "!desc_failure",  };
+    !windows::
+      # Note the secondary group classes here. Windows treats primary and secondary groups the same,
+      # and hence that test is invalid there.
+      "unix_ok" and => { "uid_success", "!uid_failure", "shell_success", "!shell_failure",
+                         "not_sgroup_success", "!not_sgroup_failure", };
+    windows::
+      "unix_ok" expression => "any";
+    any::
+      "ok" and => { "pgroup_success", "!pgroup_failure", "sgroup_success", "!sgroup_failure",
+                    "hash_success", "!hash_failure",
+                    "home_success", "!home_failure", "desc_success", "!desc_failure",
+                    "unix_ok" };
 
   reports:
     ok.ready::

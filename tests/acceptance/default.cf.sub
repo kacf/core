@@ -15,7 +15,7 @@ vars:
   any::
   "cmds" slist => { "date", "diff", "echo", "egrep", "false", "grep", "gzip", "hexdump",
                     "ln", "mkdir", "od", "perl", "printf", "pwd", "rm", "sort", "touch",
-                    "true", "wc", "cat", "sed" };
+                    "true", "wc", "cat", "sed", "psexec" };
 
   !windows::
     "paths[bin]" string                    => "/bin";
@@ -25,13 +25,15 @@ vars:
   windows::
     "paths[mingw_msys_1_0_bin]" string     => "c:\\mingw\\msys\\1.0\\bin";
     "paths[msys_bin]" string               => "c:\\msys\\bin";
+    "paths[pstools]" string               => "c:\\PSTools";
 
   any::
   "paths_indices" slist => getindices("paths");
 
 classes:
   "$(paths_indices)_$(cmds)" expression => fileexists("$(paths[$(paths_indices)])$(DS)$(cmds)$(exeext)");
-  "has_$(cmds)" expression => "$(paths_indices)_$(cmds)";
+  "has_$(cmds)" expression => "$(paths_indices)_$(cmds)",
+    scope => "namespace";
 
 vars:
   "$(cmds)" string => "$(paths[$(paths_indices)])$(DS)$(cmds)$(exeext)",

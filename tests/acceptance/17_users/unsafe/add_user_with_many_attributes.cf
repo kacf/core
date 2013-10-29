@@ -64,8 +64,14 @@ bundle agent check
   classes:
       "ready" and => { "uid_methods_run", "pgroup_methods_run", "sgroup_methods_run",
                        "home_methods_run", "shell_methods_run", "desc_methods_run" };
-      "ok" and => { "uid_success", "!uid_failure", "pgroup_success", "!pgroup_failure", "sgroup_success", "!sgroup_failure",
-                    "home_success", "!home_failure", "shell_success", "!shell_failure", "desc_success", "!desc_failure",  };
+    !windows::
+      "unix_ok" and => { "uid_success", "!uid_failure", "shell_success", "!shell_failure", };
+    windows::
+      "unix_ok" expression => "any";
+    any::
+      "ok" and => { "pgroup_success", "!pgroup_failure", "sgroup_success", "!sgroup_failure",
+                    "home_success", "!home_failure", "desc_success", "!desc_failure",
+                    "unix_ok" };
 
   reports:
     ok.ready::

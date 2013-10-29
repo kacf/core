@@ -79,8 +79,9 @@ bundle agent check
       classes => default_cf_sub_set_class("sys_methods_run");
 
   classes:
-    "1_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)"));
-    "2_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile).2"));
+    !windows::
+      "1_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile)"));
+      "2_ok" not => strcmp("0", countlinesmatching("Succeeded", "$(G.testfile).2"));
 
   classes:
       "ready" and => { "bin_methods_run", "sys_methods_run" };

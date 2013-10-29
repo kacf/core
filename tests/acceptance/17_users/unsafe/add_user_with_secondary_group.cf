@@ -46,7 +46,7 @@ bundle agent test
       groups_secondary => { "$(user_tests.group1)" };
 
   commands:
-    windows::
+    !windows::
       "sudo -u johndoe /bin/sh -c '$(G.echo) Succeeded > $(G.testfile)'"
         contain => test_contain_body;
 }
