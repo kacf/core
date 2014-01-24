@@ -1372,6 +1372,19 @@ typedef struct
 
 /*************************************************************************/
 
+typedef struct
+{
+    Rlist *relay_networks;
+    int rip_metric;
+    int rip_timeout;
+    char *nat_pool;
+    bool rip_splithorizon;
+    bool rip_passive;
+    char *relay_policy;
+} Routes;
+
+/*************************************************************************/
+
 typedef enum
 {
     ENVIRONMENT_STATE_CREATE,
@@ -1432,6 +1445,7 @@ typedef struct
 typedef struct
 {
     Interfaces interface;
+    Routes routes;
     FileSelect select;
     FilePerms perms;
     FileCopy copy;
