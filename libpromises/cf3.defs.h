@@ -1374,14 +1374,13 @@ typedef struct
 
 typedef struct
 {
-    Rlist *relay_networks;
     int rip_metric;
     int rip_timeout;
     char *nat_pool;
     bool rip_splithorizon;
     bool rip_passive;
     char *relay_policy;
-} Routes;
+} Networks;
 
 /*************************************************************************/
 
@@ -1445,7 +1444,7 @@ typedef struct
 typedef struct
 {
     Interfaces interface;
-    Routes routes;
+    Networks networks;
     FileSelect select;
     FilePerms perms;
     FileCopy copy;
