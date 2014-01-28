@@ -1383,6 +1383,8 @@ typedef struct
     bool rip_splithorizon;
     bool rip_passive;
     char *relay_policy;
+    char *gateway_interface;
+    char *gateway_ip;
 } Networks;
 
 /*************************************************************************/
@@ -1518,6 +1520,9 @@ typedef struct
     int haveipv6;
     int haveuvlan;
     int havetvlan;
+    int haveroutedto;
+    int haveadvertisedby;
+    int havebalance;
 
     /* editline */
 
