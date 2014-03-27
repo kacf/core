@@ -1,0 +1,32 @@
+# Test that global classes defined in two different bundles behave correctly.
+
+body common control
+{
+  inputs => { "../../default.cf.sub" };
+  bundlesequence => { default("$(this.promise_filename)") };
+}
+
+bundle agent check
+{
+  classes:
+      "ok" and => { "subclass_ok" },
+        scope => "namespace";
+
+  methods:
+      "diff" usebundle => class_sub;
+      "check" usebundle => check_sub;
+}
+
+bundle agent class_sub
+{
+  classes:
+      "subclass_ok" expression => "any",
+        scope => "namespace";
+}
+
+bundle agent check_sub
+{
+  reports:
+      "$(this.promise_filename) Pass" ifvarclass => "ok";
+      "$(this.promise_filename) FAIL" ifvarclass => "!ok";
+}
