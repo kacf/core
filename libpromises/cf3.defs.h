@@ -1625,6 +1625,8 @@ typedef struct
     int haveroutedto;
     int haveadvertisedby;
     int havebalance;
+    int havelinkstate;
+    int havelinkservices;
 
     /* editline */
 
