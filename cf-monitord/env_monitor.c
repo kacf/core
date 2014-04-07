@@ -1,16 +1,16 @@
 /*
-   Copyright (C) CFEngine AS
+  Copyright (C) CFEngine AS
 
-   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
+  This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
-   This program is free software; you can redistribute it and/or modify it
-   under the terms of the GNU General Public License as published by the
-   Free Software Foundation; version 3.
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation; version 3.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
@@ -401,14 +401,14 @@ static Averages EvalAvQ(EvalContext *ctx, char *t)
         }
 
         // lastweek_vals is last week's stored data
-        
+
         This =
             RejectAnomaly(CF_THIS[i], lastweek_vals->Q[i].expect, lastweek_vals->Q[i].var, LOCALAV.Q[i].expect,
                           LOCALAV.Q[i].var);
 
         newvals.Q[i].q = This;
         newvals.last_seen = now;  // Record the freshness of this slot
-        
+
         LOCALAV.Q[i].q = This;
 
         Log(LOG_LEVEL_DEBUG, "Previous week's '%s.q' %lf", name, lastweek_vals->Q[i].q);
@@ -429,7 +429,7 @@ static Averages EvalAvQ(EvalContext *ctx, char *t)
         else
         {
             newvals.Q[i].dq = 0;
-            LOCALAV.Q[i].dq = 0;           
+            LOCALAV.Q[i].dq = 0;
         }
 
         // Save the last measured value as the value "from five minutes ago" to get the gradient
@@ -450,10 +450,10 @@ static Averages EvalAvQ(EvalContext *ctx, char *t)
         }
 
         Log(LOG_LEVEL_VERBOSE, "[%d] %s q=%lf, var=%lf, ex=%lf", i, name,
-              newvals.Q[i].q, newvals.Q[i].var, newvals.Q[i].expect);
+            newvals.Q[i].q, newvals.Q[i].var, newvals.Q[i].expect);
 
         Log(LOG_LEVEL_VERBOSE, "[%d] = %lf -> (%lf#%lf) local [%lf#%lf]", i, This, newvals.Q[i].expect,
-              sqrt(newvals.Q[i].var), LOCALAV.Q[i].expect, sqrt(LOCALAV.Q[i].var));
+            sqrt(newvals.Q[i].var), LOCALAV.Q[i].expect, sqrt(LOCALAV.Q[i].var));
 
         if (This > 0)
         {
@@ -587,7 +587,7 @@ static void ArmClasses(EvalContext *ctx, Averages av)
     char buff[CF_BUFSIZE], ldt_buff[CF_BUFSIZE], name[CF_MAXVARSIZE];
     static int anomaly[CF_OBSERVABLES][LDT_BUFSIZE] = { { 0 } };
     extern Item *ALL_INCOMING;
-    extern Item *MON_UDP4, *MON_UDP6, *MON_TCP4, *MON_TCP6;
+    extern Item *MON_UDP4, *MON_UDP6, *MON_TCP4, *MON_TCP6, *MON_RAW4, *MON_RAW6;
 
     for (i = 0; i < CF_OBSERVABLES; i++)
     {
@@ -679,6 +679,8 @@ static void ArmClasses(EvalContext *ctx, Averages av)
     AddOpenPorts("listening_udp4_ports", MON_UDP4, &mon_data);
     AddOpenPorts("listening_tcp6_ports", MON_TCP6, &mon_data);
     AddOpenPorts("listening_tcp4_ports", MON_TCP4, &mon_data);
+    AddOpenPorts("listening_raw4_ports", MON_RAW4, &mon_data);
+    AddOpenPorts("listening_raw6_ports", MON_RAW6, &mon_data);
 
     // Port addresses
 
@@ -706,13 +708,25 @@ static void ArmClasses(EvalContext *ctx, Averages av)
         snprintf(buff,CF_BUFSIZE,"udp6_port_addr[%s]=%s",ip->name,ip->classes);
         AppendItem(&mon_data, buff, NULL);
     }
-    
+
     for (ip = MON_UDP4; ip != NULL; ip=ip->next)
     {
         snprintf(buff,CF_BUFSIZE,"udp4_port_addr[%s]=%s",ip->name,ip->classes);
         AppendItem(&mon_data, buff, NULL);
     }
-    
+
+    for (ip = MON_RAW6; ip != NULL; ip=ip->next)
+    {
+        snprintf(buff,CF_BUFSIZE,"raw6_port_addr[%s]=%s",ip->name,ip->classes);
+        AppendItem(&mon_data, buff, NULL);
+    }
+
+    for (ip = MON_RAW4; ip != NULL; ip=ip->next)
+    {
+        snprintf(buff,CF_BUFSIZE,"raw4_port_addr[%s]=%s",ip->name,ip->classes);
+        AppendItem(&mon_data, buff, NULL);
+    }
+
     PublishEnvironment(mon_data);
 
     DeleteItemList(mon_data);
