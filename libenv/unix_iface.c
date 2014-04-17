@@ -1,16 +1,16 @@
 /*
-   Copyright (C) CFEngine AS
+  Copyright (C) CFEngine AS
 
-   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
+  This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
-   This program is free software; you can redistribute it and/or modify it
-   under the terms of the GNU General Public License as published by the
-   Free Software Foundation; version 3.
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation; version 3.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
@@ -51,10 +51,10 @@
 #  ifdef _SIZEOF_ADDR_IFREQ
 #   define SIZEOF_IFREQ(x) _SIZEOF_ADDR_IFREQ(x)
 #  else
-#   define SIZEOF_IFREQ(x) \
-          ((x).ifr_addr.sa_len > sizeof(struct sockaddr) ? \
-           (sizeof(struct ifreq) - sizeof(struct sockaddr) + \
-            (x).ifr_addr.sa_len) : sizeof(struct ifreq))
+#   define SIZEOF_IFREQ(x)                              \
+    ((x).ifr_addr.sa_len > sizeof(struct sockaddr) ?    \
+     (sizeof(struct ifreq) - sizeof(struct sockaddr) +  \
+      (x).ifr_addr.sa_len) : sizeof(struct ifreq))
 #  endif
 # else
 #  define SIZEOF_IFREQ(x) sizeof(struct ifreq)
@@ -132,7 +132,7 @@ static void GetMacAddress(EvalContext *ctx, int fd, struct ifreq *ifr, struct if
     // mac address on a loopback interface doesn't make sense
     if (ifr->ifr_flags & IFF_LOOPBACK)
     {
-      return;
+        return;
     }
 
 # if defined(SIOCGIFHWADDR) && defined(HAVE_STRUCT_IFREQ_IFR_HWADDR)
@@ -143,13 +143,13 @@ static void GetMacAddress(EvalContext *ctx, int fd, struct ifreq *ifr, struct if
         Log(LOG_LEVEL_ERR, "Couldn't get mac address for '%s' interface. (ioctl: %s)", ifr->ifr_name, GetErrorStr());
         return;
     }
-      
+
     snprintf(hw_mac, sizeof(hw_mac), "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
              (unsigned char) ifr->ifr_hwaddr.sa_data[0],
              (unsigned char) ifr->ifr_hwaddr.sa_data[1],
              (unsigned char) ifr->ifr_hwaddr.sa_data[2],
              (unsigned char) ifr->ifr_hwaddr.sa_data[3],
-             (unsigned char) ifr->ifr_hwaddr.sa_data[4], 
+             (unsigned char) ifr->ifr_hwaddr.sa_data[4],
              (unsigned char) ifr->ifr_hwaddr.sa_data[5]);
 
     EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, hw_mac, CF_DATA_TYPE_STRING, "source=agent");
@@ -168,7 +168,7 @@ static void GetMacAddress(EvalContext *ctx, int fd, struct ifreq *ifr, struct if
     if (getifaddrs(&ifaddr) == -1)
     {
         Log(LOG_LEVEL_ERR, "!! Could not get interface %s addresses",
-          ifp->ifr_name);
+            ifp->ifr_name);
 
         EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, "mac_unknown", CF_DATA_TYPE_STRING, "source=agent");
         EvalContextClassPutHard(ctx, "mac_unknown", "source=agent");
@@ -176,20 +176,20 @@ static void GetMacAddress(EvalContext *ctx, int fd, struct ifreq *ifr, struct if
     }
     for (ifa = ifaddr; ifa != NULL; ifa=ifa->ifa_next)
     {
-        if ( strcmp(ifa->ifa_name, ifp->ifr_name) == 0) 
+        if ( strcmp(ifa->ifa_name, ifp->ifr_name) == 0)
         {
-            if (ifa->ifa_addr->sa_family == AF_LINK) 
+            if (ifa->ifa_addr->sa_family == AF_LINK)
             {
                 sdl = (struct sockaddr_dl *)ifa->ifa_addr;
                 m = (char *) LLADDR(sdl);
-                
+
                 snprintf(hw_mac, sizeof(hw_mac), "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-                    (unsigned char) m[0],
-                    (unsigned char) m[1],
-                    (unsigned char) m[2],
-                    (unsigned char) m[3],
-                    (unsigned char) m[4],
-                    (unsigned char) m[5]);
+                         (unsigned char) m[0],
+                         (unsigned char) m[1],
+                         (unsigned char) m[2],
+                         (unsigned char) m[3],
+                         (unsigned char) m[4],
+                         (unsigned char) m[5]);
 
                 EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, hw_mac, CF_DATA_TYPE_STRING, "source=agent");
                 RlistAppend(hardware, hw_mac, RVAL_TYPE_SCALAR);
@@ -202,16 +202,16 @@ static void GetMacAddress(EvalContext *ctx, int fd, struct ifreq *ifr, struct if
 
     }
     freeifaddrs(ifaddr);
-    
+
 # elif defined(_AIX) && !defined(HAVE_GETIFADDRS)
     char hw_mac[CF_MAXVARSIZE];
     char mac[CF_MAXVARSIZE];
-    
+
     if (aix_get_mac_addr(ifp->ifr_name, mac) == 0)
     {
         sprintf(hw_mac, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-	       mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	
+                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
         EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, hw_mac, CF_DATA_TYPE_STRING, "source=agent");
         RlistAppend(hardware, hw_mac, RVAL_TYPE_SCALAR);
         RlistAppend(interfaces, ifp->ifr_name, RVAL_TYPE_SCALAR);
@@ -227,29 +227,29 @@ static void GetMacAddress(EvalContext *ctx, int fd, struct ifreq *ifr, struct if
 # elif defined(__sun) && !defined(HAVE_GETIFADDRS)
 
     char hw_mac[CF_MAXVARSIZE];
-    
+
     struct ifaddrs *ifaddr, *ifa;
     struct sockaddr_dl *sdl;
 
     if (solaris_getifaddrs(&ifaddr) == -1)
     {
         Log(LOG_LEVEL_ERR, "!! Could not get interface %s addresses (getifaddrs)",
-          ifp->ifr_name);
+            ifp->ifr_name);
 
         EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, "mac_unknown", CF_DATA_TYPE_STRING, "source=agent");
         EvalContextClassPutHard(ctx, "mac_unknown", "source=agent");
         return;
     }
     for (ifa = ifaddr; ifa != NULL; ifa=ifa->ifa_next)
-    {      
+    {
         struct sockaddr * saddr = ifaddr->ifa_addr;
         snprintf(hw_mac, sizeof(hw_mac), "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-        (unsigned char) saddr->sa_data[0],
-        (unsigned char) saddr->sa_data[1],
-        (unsigned char) saddr->sa_data[2],
-        (unsigned char) saddr->sa_data[3],
-        (unsigned char) saddr->sa_data[4],
-        (unsigned char) saddr->sa_data[5]);
+                 (unsigned char) saddr->sa_data[0],
+                 (unsigned char) saddr->sa_data[1],
+                 (unsigned char) saddr->sa_data[2],
+                 (unsigned char) saddr->sa_data[3],
+                 (unsigned char) saddr->sa_data[4],
+                 (unsigned char) saddr->sa_data[5]);
 
         EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, hw_mac, CF_DATA_TYPE_STRING, "source=agent");
         RlistAppend(hardware, hw_mac, RVAL_TYPE_SCALAR);
@@ -294,10 +294,10 @@ static void GetInterfaceFlags(EvalContext *ctx, struct ifreq *ifr, Rlist **flags
     // If a least 1 flag is found
     if (strlen(buffer) > 1)
     {
-      // Skip leading space
-      fp = buffer + 1;
-      EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, fp, CF_DATA_TYPE_STRING, "source=agent");
-      RlistAppend(flags, fp, RVAL_TYPE_SCALAR);
+        // Skip leading space
+        fp = buffer + 1;
+        EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, fp, CF_DATA_TYPE_STRING, "source=agent");
+        RlistAppend(flags, fp, RVAL_TYPE_SCALAR);
     }
 }
 
@@ -336,12 +336,12 @@ void GetInterfacesInfo(EvalContext *ctx)
 # ifdef SIOCGIFCONF
     if (ioctl(fd, SIOCGIFCONF, &list) == -1 || (list.ifc_len < (sizeof(struct ifreq))))
 # else
-    if ((ioctl(fd, OSIOCGIFCONF, &list) == -1) || (list.ifc_len < (sizeof(struct ifreq))))
+        if ((ioctl(fd, OSIOCGIFCONF, &list) == -1) || (list.ifc_len < (sizeof(struct ifreq))))
 # endif
-    {
-        Log(LOG_LEVEL_ERR, "Couldn't get interfaces - old kernel? Try setting CF_IFREQ to 1024. (ioctl: %s)", GetErrorStr());
-        exit(EXIT_FAILURE);
-    }
+        {
+            Log(LOG_LEVEL_ERR, "Couldn't get interfaces - old kernel? Try setting CF_IFREQ to 1024. (ioctl: %s)", GetErrorStr());
+            exit(EXIT_FAILURE);
+        }
 
     char last_name[sizeof(ifp->ifr_name)] = "";
 
@@ -402,7 +402,7 @@ void GetInterfacesInfo(EvalContext *ctx)
             }
             else
             {
-              GetInterfaceFlags(ctx, &ifr, &flags);
+                GetInterfaceFlags(ctx, &ifr, &flags);
             }
 
             if (ifr.ifr_flags & IFF_UP)
@@ -583,6 +583,8 @@ static void FindV6InterfacesInfo(EvalContext *ctx)
 {
     FILE *pp = NULL;
     char buffer[CF_BUFSIZE];
+    char interface[CF_SMALLBUF];
+    Rlist *ips = NULL;
 
 /* Whatever the manuals might say, you cannot get IPV6
    interface configuration from the ioctls. This seems
@@ -633,6 +635,24 @@ static void FindV6InterfacesInfo(EvalContext *ctx)
             }
         }
 
+        if (isalnum(buffer[0])) // This line is the interface indentifier
+        {
+            char one[CF_SMALLBUF], two[CF_SMALLBUF];
+            one[0] = '\0';
+            two[0] = '\0';
+
+            if (isdigit(buffer[0])) // e.g. 1: eth0 stuff
+            {
+                sscanf(buffer, "%31s %31s", one, two);
+            }
+            else // e.g. eth0:
+            {
+                sscanf(buffer, "%31[^: \t] ", two);
+            }
+
+            strcpy(interface, two);
+        }
+
         if (strcasestr(buffer, "inet6"))
         {
             Item *ip, *list = NULL;
@@ -652,9 +672,19 @@ static void FindV6InterfacesInfo(EvalContext *ctx)
 
                 if ((IsIPV6Address(ip->name)) && ((strcmp(ip->name, "::1") != 0)))
                 {
+                    char name[CF_MAXVARSIZE];
                     Log(LOG_LEVEL_VERBOSE, "Found IPv6 address %s", ip->name);
                     EvalContextAddIpAddress(ctx, ip->name);
-                    EvalContextClassPutHard(ctx, ip->name, "inventory,attribute_name=none,source=agent");
+                    snprintf(name, sizeof(name), "ipv6_%s", CanonifyName(ip->name));
+                    EvalContextClassPutHard(ctx, name, "inventory,attribute_name=none,source=agent");
+
+                    RlistAppendScalar(&ips, ip->name);
+
+                    if (strncmp(ip->name, "fe80:", 5) != 0) // Skip link-local invisible addresses
+                    {
+                        snprintf(name, sizeof(name), "ipv6[%s]", CanonifyName(interface));
+                        EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, name, ip->name, CF_DATA_TYPE_STRING, "source=agent");
+                    }
                 }
             }
 
@@ -663,6 +693,15 @@ static void FindV6InterfacesInfo(EvalContext *ctx)
     }
 
     cf_pclose(pp);
+
+    if (ips)
+    {
+        EvalContextVariablePutSpecial(ctx, SPECIAL_SCOPE_SYS, "ipv6_addresses", ips, CF_DATA_TYPE_STRING_LIST,
+                                      "inventory,source=agent,attribute_name=IPv6 addresses");
+    }
+
+    RlistDestroy(ips);
+
 }
 
 /*******************************************************************/
@@ -679,7 +718,7 @@ static void InitIgnoreInterfaces()
         Log(LOG_LEVEL_VERBOSE, "No interface exception file %s",filename);
         return;
     }
-    
+
     while (!feof(fin))
     {
         regex[0] = '\0';
@@ -687,10 +726,10 @@ static void InitIgnoreInterfaces()
 
         if (scanCount != 0 && *regex != '\0')
         {
-           RlistPrependScalarIdemp(&IGNORE_INTERFACES, regex);
+            RlistPrependScalarIdemp(&IGNORE_INTERFACES, regex);
         }
     }
- 
+
     fclose(fin);
 }
 
@@ -708,7 +747,7 @@ static bool IgnoreInterface(char *name)
         {
             Log(LOG_LEVEL_VERBOSE, "Ignoring interface '%s' because it matches '%s'",name,CF_IGNORE_INTERFACES);
             return true;
-        }    
+        }
     }
 
     return false;
@@ -722,33 +761,33 @@ static int aix_get_mac_addr(const char *device_name, uint8_t mac[6])
     int count, i;
 
     ksize = getkerninfo(KINFO_NDD, 0, 0, 0);
-    if (ksize == 0) 
+    if (ksize == 0)
     {
         errno = ENOSYS;
         return -1;
     }
 
     ndd = (struct kinfo_ndd *)xmalloc(ksize);
-    if (ndd == NULL) 
+    if (ndd == NULL)
     {
         errno = ENOMEM;
         return -1;
     }
 
-    if (getkerninfo(KINFO_NDD, ndd, &ksize, 0) == -1) 
+    if (getkerninfo(KINFO_NDD, ndd, &ksize, 0) == -1)
     {
         errno = ENOSYS;
         return -1;
     }
 
     count= ksize/sizeof(struct kinfo_ndd);
-    for (i=0;i<count;i++) 
+    for (i=0;i<count;i++)
     {
-        if ((ndd[i].ndd_type == NDD_ETHER || 
-            ndd[i].ndd_type == NDD_ISO88023) &&
+        if ((ndd[i].ndd_type == NDD_ETHER ||
+             ndd[i].ndd_type == NDD_ISO88023) &&
             ndd[i].ndd_addrlen == 6 &&
             (strcmp(ndd[i].ndd_alias, device_name) == 0 ||
-            strcmp(ndd[i].ndd_name, device_name == 0))) 
+             strcmp(ndd[i].ndd_name, device_name == 0)))
         {
             memcpy(mac, ndd[i].ndd_addr, 6);
             free(ndd);
