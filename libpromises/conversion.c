@@ -1,16 +1,16 @@
 /*
-   Copyright (C) CFEngine AS
+  Copyright (C) CFEngine AS
 
-   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
+  This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
-   This program is free software; you can redistribute it and/or modify it
-   under the terms of the GNU General Public License as published by the
-   Free Software Foundation; version 3.
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation; version 3.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
@@ -35,6 +35,24 @@
 
 
 static int IsSpace(char *remainder);
+
+/***************************************************************/
+
+int GetBondingMode(char *s)
+{
+    char *opts[8] = { "balance-rr", "active-backup" ,"balance-xor", "broadcast", "802.3ad", "balance-tlb", "balance-alb", NULL};
+    int i = CF_NOINT;
+
+    for (i = 0; opts[i] != NULL; i++)
+    {
+        if (strcmp(s, opts[i]) == 0)
+        {
+            return i;
+        }
+    }
+
+    return CF_NOINT;
+}
 
 /***************************************************************/
 
@@ -97,8 +115,8 @@ InsertMatchType InsertMatchTypeFromString(const char *s)
 int SyslogPriorityFromString(const char *s)
 {
     static const char *const SYSLOG_PRIORITY_TYPES[] =
-    { "emergency", "alert", "critical", "error", "warning", "notice",
-      "info", "debug", NULL };
+        { "emergency", "alert", "critical", "error", "warning", "notice",
+          "info", "debug", NULL };
 
     return FindTypeInArray(SYSLOG_PRIORITY_TYPES, s, 3, 3);
 }
@@ -173,8 +191,8 @@ PasswordFormat PasswordFormatFromString(const char *s)
 PackageAction PackageActionFromString(const char *s)
 {
     static const char *const PACKAGE_ACTION_TYPES[] =
-    { "add", "delete", "reinstall", "update", "addupdate", "patch",
-      "verify", NULL };
+        { "add", "delete", "reinstall", "update", "addupdate", "patch",
+          "verify", NULL };
 
     return FindTypeInArray(PACKAGE_ACTION_TYPES, s, PACKAGE_ACTION_NONE, PACKAGE_ACTION_NONE);
 }
@@ -290,7 +308,7 @@ FileLinkType FileLinkTypeFromString(const char *s)
 FileComparator FileComparatorFromString(const char *s)
 {
     static const char *const FILE_COMPARISON_TYPES[] =
-    { "atime", "mtime", "ctime", "digest", "hash", "binary", "exists", NULL };
+        { "atime", "mtime", "ctime", "digest", "hash", "binary", "exists", NULL };
 
     return FindTypeInArray(FILE_COMPARISON_TYPES, s, FILE_COMPARATOR_NONE, FILE_COMPARATOR_NONE);
 }
@@ -411,7 +429,7 @@ long IntFromString(const char *s)
     if ((a == CF_NOINT) || (!IsSpace(remainder)))
     {
         Log(LOG_LEVEL_INFO, "Error reading assumed integer value '%s' => 'non-value', found remainder '%s'",
-              s, remainder);
+            s, remainder);
         if (strchr(s, '$'))
         {
             Log(LOG_LEVEL_INFO, "The variable might not yet be expandable - not necessarily an error");
