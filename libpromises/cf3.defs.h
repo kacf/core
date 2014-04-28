@@ -1501,6 +1501,11 @@ typedef struct
     bool ospf_abr_summarization; // Not "no-summary"
     char ospf_area_type; // stub, nssa etc
     int ospf_area;
+    int tunnel_id;
+    char *tunnel_loopback;
+    char *tunnel_multicast_group;
+    char *tunnel_interface;
+    char *tunnel_alien_arp;
 
 } Interfaces;
 
@@ -1651,6 +1656,7 @@ typedef struct
     int havebalance;
     int havelinkstate;
     int havelinkservices;
+    int havetunnel;
 
     /* editline */
 
