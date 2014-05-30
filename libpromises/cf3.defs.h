@@ -1007,21 +1007,6 @@ struct LinkStateOSPF_
     int ospf_area;
 };
 
-struct LinkStateBGP_
-{
-    int bgp_remote_as;
-    char *interface;
-    Rlist *bgp_neighbours;
-    bool bgp_reflector; // i.e. we are the server
-    int bgp_ttl_security;
-    int bgp_advert_interval;
-    bool bgp_next_hop_self;
-    Rlist *bgp_families;
-    bool bgp_graceful_restart;
-    int bgp_maximum_paths;
-    bool bgp_ipv6_neighbor_discovery_route_advertisement;
-};
-
 typedef enum
 {
     CF_RC_INITIAL,
@@ -1091,6 +1076,21 @@ struct BGPNeighbor
     bool reflector;
     int multihop;
     Rlist *activate; // List of families
+};
+
+struct LinkStateBGP_
+{
+    int bgp_remote_as;
+    char *interface;
+    Rlist *bgp_neighbours;
+    bool bgp_reflector; // i.e. we are the server
+    int bgp_ttl_security;
+    int bgp_advert_interval;
+    bool bgp_next_hop_self;
+    Rlist *bgp_families;
+    bool bgp_graceful_restart;
+    int bgp_maximum_paths;
+    char *bgp_ipv6_neighbor_discovery_route_advertisement;
 };
 
 typedef struct Bridges_ Bridges;
