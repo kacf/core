@@ -483,7 +483,8 @@ typedef enum
     BGP_LOG_NEIGHBOR_CHANGES,
     BGP_REDISTRIBUTE,
     BGP_BESTPATH,
-    BGP_NETWORKS,
+    BGP_V4_NETWORKS,
+    BGP_V6_NETWORKS,
     ROUTE_CONTROL_NONE
 } RouteServiceControl;
 
@@ -1052,7 +1053,8 @@ struct CommonRouting_
     bool bgp_redistribute_connected;
     bool bgp_redistribute_static;
     bool bgp_redistribute_ospf;
-    Rlist *bgp_advertisable_networks;
+    Rlist *bgp_advertisable_v4_networks;
+    Rlist *bgp_advertisable_v6_networks;
 };
 
 typedef struct LinkStateBGP_ LinkStateBGP;
