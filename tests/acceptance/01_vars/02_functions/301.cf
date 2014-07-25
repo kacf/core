@@ -28,30 +28,73 @@ bundle agent test
 
 
   vars:
-      "p[root]" string => translatepath("/");
-      "d[root]" string => translatepath("/");
+      "tp[root]" string => "/";
+      "td[root]" string => "/";
 
-      "p[simple]" string => translatepath("/foo/bar");
-      "d[simple]" string => translatepath("/foo");
+      "tp[simple]" string => "/foo/bar";
+      "td[simple]" string => "/foo";
 
-      "p[slash]" string => translatepath("/foo/bar/");
-      "d[slash]" string => translatepath("/foo");
+      "tp[slash]" string => "/foo/bar/";
+      "td[slash]" string => "/foo";
 
-      "p[sub]" string => translatepath("/foo");
-      "d[sub]" string => translatepath("/");
+      "tp[sub]" string => "/foo";
+      "td[sub]" string => "/";
 
-      "p[subslash]" string => translatepath("/foo/");
-      "d[subslash]" string => translatepath("/");
+      "tp[subslash]" string => "/foo/";
+      "td[subslash]" string => "/";
 
-      "p[multi]" string => translatepath("/foo/bar/baz");
-      "d[multi]" string => translatepath("/foo/bar");
+      "tp[multi]" string => "/foo/bar/baz";
+      "td[multi]" string => "/foo/bar";
 
-      "p[multislash]" string => translatepath("/foo/bar/baz/");
-      "d[multislash]" string => translatepath("/foo/bar");
+      "tp[multislash]" string => "/foo/bar/baz/";
+      "td[multislash]" string => "/foo/bar";
 
-      "p[more]" string => translatepath("/a/b/c/d/e/f/g/h/i");
-      "d[more]" string => translatepath("/a/b/c/d/e/f/g/h");
+      "tp[more]" string => "/a/b/c/d/e/f/g/h/i";
+      "td[more]" string => "/a/b/c/d/e/f/g/h";
 
+      "template_keys" slist => getindices("tp");
+
+    windows::
+      "tp[full_root]" string => "C:/";
+      "td[full_root]" string => "C:/";
+
+      "tp[full_root_file]" string => "C:/foo";
+      "td[full_root_file]" string => "C:/";
+
+      "tp[full_root_file_subslash]" string => "C:/foo/";
+      "td[full_root_file_subslash]" string => "C:/";
+
+      "tp[full_file]" string => "C:/foo/bar";
+      "td[full_file]" string => "C:/foo";
+
+      "tp[full_file_subslash]" string => "C:/foo/bar/";
+      "td[full_file_subslash]" string => "C:/foo";
+
+      "tp[drive]" string => "C:";
+      "td[drive]" string => "C:";
+
+      "tp[dir]" string => "C:foo";
+      "td[dir]" string => "C:";
+
+      "tp[two_dirs]" string => "C:foo/bar";
+      "td[two_dirs]" string => "C:foo";
+
+      "tp[dir_subslash]" string => "C:foo/";
+      "td[dir_subslash]" string => "C:";
+
+      "tp[two_dirs_subslash]" string => "C:foo/bar/";
+      "td[two_dirs_subslash]" string => "C:foo";
+
+
+      "p[unix_$(template_keys)]" string => "$(tp[$(template_keys)])";
+      "p[native_$(template_keys)]" string => translatepath("$(tp[$(template_keys)])");
+      "d[unix_$(template_keys)]" string => "$(td[$(template_keys)])";
+      "d[native_$(template_keys)]" string => translatepath("$(td[$(template_keys)])");
+    !windows::
+      "p[native_$(template_keys)]" string => "$(tp[$(template_keys)])";
+      "d[native_$(template_keys)]" string => "$(td[$(template_keys)])";
+
+    any::
       "keys" slist => getindices("p");
 
       "b[$(keys)]" string => dirname("$(p[$(keys)])");
@@ -70,7 +113,8 @@ bundle agent check
 
   reports:
     DEBUG::
-      "'dirname($(test.p[$(keys)]))' = '$(test.b[$(keys)])' =?= '$(test.d[$(keys)])'";
+      "'dirname($(test.p[$(keys)]))' = '$(test.b[$(keys)])' != '$(test.d[$(keys)])'"
+        ifvarclass => "failed_cmp_$(keys)";
 
     ok::
       "$(this.promise_filename) Pass";

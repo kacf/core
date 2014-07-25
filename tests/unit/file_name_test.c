@@ -7,21 +7,22 @@ static void test_first_file_separator(void)
 {
     const char *out;
 
-    char *in1 = "/tmp/myfile";
-    out = FirstFileSeparator(in1);
-    assert_true(out == in1);
+    char *in = "/tmp/myfile";
+    out = FirstFileSeparator(in);
+    assert_true(out == in);
 
-    char *in2 = "/tmp/myfile";
-    out = FirstFileSeparator(in2);
-    assert_true(out == in2);
+    in = "tmp/myfile";
+    out = FirstFileSeparator(in);
+    assert_true(out == in + 3);
 
-    char *in3 = "c:\\tmp\\myfile";
-    out = FirstFileSeparator(in3);
-    assert_true(out == in3 + 2);
+    in = "c:\\tmp\\myfile";
+    out = FirstFileSeparator(in);
+    assert_true(out == in + 2);
 
-    char *in4 = "\\\\my\\windows\\share";
-    out = FirstFileSeparator(in4);
-    assert_true(out == in4 + 1);
+    in = "\\\\my\\windows\\share";
+    out = FirstFileSeparator(in);
+    assert_true(out == in + 1);
+
 }
 
 static void test_get_parent_directory_copy(void)

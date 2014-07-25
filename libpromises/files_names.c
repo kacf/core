@@ -216,12 +216,9 @@ void AddSlash(char *str)
         return;
     }
 
-// add root slash on Unix systems
     if (strlen(str) == 0)
     {
-#if !defined(_WIN32)
-        strcpy(str, "/");
-#endif
+        strcpy(str, sep);
         return;
     }
 
@@ -305,7 +302,8 @@ void DeleteSlash(char *str)
         return;
     }
 
-    if (strcmp(str, "/") == 0)
+    if (IsAbsoluteFileName(str)
+        && FirstFileSeparator(str) == LastFileSeparator(str))
     {
         return;
     }
@@ -323,21 +321,14 @@ const char *FirstFileSeparator(const char *str)
     assert(str);
     assert(strlen(str) > 0);
 
-    if(*str == '/')
-    {
-        return str;
-    }
-
     if(strncmp(str, "\\\\", 2) == 0)  // windows share
     {
         return str + 1;
     }
 
-    const char *pos;
-
-    for(pos = str; *pos != '\0'; pos++)  // windows "X:\file" path
+    for(const char *pos = str; *pos != '\0'; pos++)
     {
-        if(*pos == '\\')
+        if(IsFileSep(*pos))
         {
             return pos;
         }
@@ -388,13 +379,16 @@ bool ChopLastNode(char *str)
     }
     else
     {
-        *sp = '\0';
+        // Don't chop the final slash in an absolute path.
+        if (IsAbsoluteFileName(str) && FirstFileSeparator(str) == sp)
+        {
+            *(++sp) = '\0';
+        }
+        else
+        {
+            *sp = '\0';
+        }
         ret = true;
-    }
-
-    if (strlen(str) == 0)
-    {
-        AddSlash(str);
     }
 
     return ret;
