@@ -144,6 +144,7 @@ void GenericAgentDiscoverContext(EvalContext *ctx, GenericAgentConfig *config)
             Log(LOG_LEVEL_ERR, "Error writing builtin failsafe to inputs prior to bootstrap");
             exit(EXIT_FAILURE);
         }
+        GenericAgentConfigSetInputFile(config, GetInputDir(), "failsafe.cf");
 
         bool am_policy_server = false;
         {
@@ -724,20 +725,6 @@ void GenericAgentInitialize(EvalContext *ctx, GenericAgentConfig *config)
     if (!MINUSF)
     {
         GenericAgentConfigSetInputFile(config, GetInputDir(), "promises.cf");
-    }
-
-    if (config->agent_specific.agent.bootstrap_policy_server)
-    {
-        snprintf(vbuff, CF_BUFSIZE, "%s%cfailsafe.cf", GetInputDir(), FILE_SEPARATOR);
-
-        if (stat(vbuff, &statbuf) == -1)
-        {
-            GenericAgentConfigSetInputFile(config, GetInputDir(), "failsafe.cf");
-        }
-        else
-        {
-            GenericAgentConfigSetInputFile(config, GetInputDir(), vbuff);
-        }
     }
 }
 
@@ -1548,6 +1535,30 @@ void GenericAgentConfigApply(EvalContext *ctx, const GenericAgentConfig *config)
     {
         EvalContextClassPutHard(ctx, "opt_dry_run", "cfe_internal,source=environment");
     }
+}
+
+bool CheckAndGenerateFailsafe(const char *inputdir, const char *input_file)
+{
+    char failsafe_path[CF_BUFSIZE];
+    
+    if (strlen(inputdir) + strlen(input_file) > sizeof(failsafe_path) - 2)
+    {
+        Log(LOG_LEVEL_ERR,
+            "Unable to generate path for %s/%s file. Path too long.",
+            inputdir, input_file);
+        /* We could create dynamically allocated buffer able to hold the 
+           whole content of the path but this should be unlikely that we
+           will end up here. */
+        return false;
+    }
+    snprintf(failsafe_path, CF_BUFSIZE - 1, "%s/%s", inputdir, input_file);
+    MapName(failsafe_path);
+    
+    if (access(failsafe_path, R_OK) != 0)
+    {
+        return WriteBuiltinFailsafePolicyToPath(failsafe_path);
+    }
+    return true;
 }
 
 void GenericAgentConfigSetInputFile(GenericAgentConfig *config, const char *inputdir, const char *input_file)
