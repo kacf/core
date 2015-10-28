@@ -246,7 +246,7 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv)
     extern char *optarg;
     int optindex = 0;
     int c;
-    GenericAgentConfig *config = GenericAgentConfigNewDefault(AGENT_TYPE_RUNAGENT);
+    GenericAgentConfig *config = GenericAgentConfigNewDefault(AGENT_TYPE_RUNAGENT, GetTTYInteractive());
 
     DEFINECLASSES[0] = '\0';
     SENDCLASSES[0] = '\0';

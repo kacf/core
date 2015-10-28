@@ -143,7 +143,7 @@ GenericAgentConfig *CheckOpts(int argc, char **argv)
     extern char *optarg;
     int optindex = 0;
     int c;
-    GenericAgentConfig *config = GenericAgentConfigNewDefault(AGENT_TYPE_SERVER);
+    GenericAgentConfig *config = GenericAgentConfigNewDefault(AGENT_TYPE_SERVER, GetTTYInteractive());
 
     while ((c = getopt_long(argc, argv, "dvIKf:D:N:VSxLFMhAlC::", OPTIONS, &optindex)) != EOF)
     {

@@ -208,7 +208,7 @@ GenericAgentConfig *CheckOpts(int argc, char **argv)
     extern char *optarg;
     int optindex = 0;
     int c;
-    GenericAgentConfig *config = GenericAgentConfigNewDefault(AGENT_TYPE_COMMON);
+    GenericAgentConfig *config = GenericAgentConfigNewDefault(AGENT_TYPE_COMMON, GetTTYInteractive());
     config->tag_release_dir = NULL;
 
     while ((c = getopt_long(argc, argv, "dvnIf:D:N:VSrxMb:i:p:s:cg:hW:lC::T:", OPTIONS, &optindex)) != EOF)
