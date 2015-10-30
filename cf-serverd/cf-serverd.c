@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 
     GenericAgentDiscoverContext(ctx, config);
 
-    Policy *policy = SelectAndLoadPolicy(config, ctx, false);
+    Policy *policy = SelectAndLoadPolicy(config, ctx, false, false);
     
     if (!policy)
     {

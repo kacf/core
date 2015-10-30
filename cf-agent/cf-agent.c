@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 
     GenericAgentDiscoverContext(ctx, config);
 
-    Policy *policy = SelectAndLoadPolicy(config, ctx, ALWAYS_VALIDATE);
+    Policy *policy = SelectAndLoadPolicy(config, ctx, ALWAYS_VALIDATE, true);
     
     if (!policy)
     {
