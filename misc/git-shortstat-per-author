@@ -1,0 +1,32 @@
+#!/usr/bin/perl
+
+# Find out the --shortstat total of each author in a given commit range.
+
+my $args = join(" ", @ARGV);
+my $git_proc;
+my @authors;
+open($git_proc, "git shortlog -s -e $args |") or die("Could not run git shortlog");
+while (<$git_proc>) {
+    if (!/\s*[0-9]+\s*(\S[^>]+>)/) {
+        print "Unexpected line: $_" . "Aborting";
+    }
+
+    $authors[scalar(@authors)] = $1;
+}
+close($git_proc);
+
+foreach my $author (@authors) {
+    open($git_proc, "git log --shortstat --no-merges --author='$author' $args |") or die("Could not run git log");
+    my $adds = 0;
+    my $rems = 0;
+    while (<$git_proc>) {
+        if (!/[0-9]+\s+files?\s+changed,?\s+(?:([0-9]+)\s+insertions?[^\s,]*,?\s+)?(?:([0-9]+)\s+deletions?)?/) {
+            next;
+        }
+
+        $adds += $1;
+        $rems += $2;
+    }
+
+    print("$author: $adds insertions, $rems deletions\n");
+}
