@@ -121,6 +121,7 @@ libpromises_la_SOURCES = \
         mutex.c mutex.h \
         ornaments.c ornaments.h \
         policy.c policy.h \
+	package_module_query.c package_module_query.h \
         parser.c parser.h \
         parser_state.h \
         patches.c \
