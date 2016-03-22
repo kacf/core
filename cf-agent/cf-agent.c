@@ -79,6 +79,7 @@
 #include <conn_cache.h>                 /* ConnCache_Init,ConnCache_Destroy */
 #include <net.h>
 #include <package_module.h>
+#include <package_module_query.h>
 #include <string_lib.h>
 
 #include <mod_common.h>
@@ -251,6 +252,7 @@ int main(int argc, char *argv[])
 
     /* Update packages cache. */
     UpdatePackagesCache(ctx, false);
+    MaybeUpdatePackagesCache = &UpdatePackagesCache;
 
     GenerateReports(config, ctx);
 

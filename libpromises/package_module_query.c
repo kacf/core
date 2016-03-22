@@ -22,18 +22,69 @@
   included file COSL.txt.
 */
 
-JsonElement *GetOldPackagesMatching(const char *package,
-                                    const char *version,
-                                    const char *arch,
-                                    const char *method)
+#include <cf3.defs.h>
+#include <csv_parser.h>
+#include <files_names.h>
+#include <package_module_query.h>
+#include <regex.h>
+
+static void NullUpdater(ARG_UNUSED EvalContext *ctx, ARG_UNUSED bool force_update)
 {
-    const bool installed_mode = (0 == strcmp(fp->name, "packagesmatching"));
+    // Noop
+}
+
+void (*MaybeUpdatePackagesCache)(EvalContext *ctx, bool force_update) =
+    &NullUpdater;
+
+JsonElement *GetNewPackagesMatching(EvalContext *ctx,
+                                    const char *regex_package,
+                                    const char *regex_version,
+                                    const char *regex_arch,
+                                    const char *regex_method,
+                                    bool upgrades)
+{
+    MaybeUpdatePackagesCache(ctx, false);
+    dbid id = upgrades ? dbid_packages_updates : dbid_packages_installed;
+    CF_DB *dbp;
+    if (!OpenDB(&dbp, id))
+    {
+        Log(LOG_LEVEL_ERR, "Could not open package '%s' database.",
+            upgrades ? "upgrades", "installed");
+        return NULL;
+    }
+
+    JsonElement *json = NULL;
+
+    CF_DBC *cursor;
+    if (!NewDBCursor(dbp, &cursor))
+    {
+        Log(LOG_LEVEL_ERR, "Could not open database cursor in "
+            "package '%s' database.",
+            upgrades ? "upgrades", "installed");
+        goto ret;
+    }
+
+    char *key, *value;
+    int ksize, vsize;
+    while (NextDB(dbcp, &key, &ksize, &value, &vsize))
+    {
+        if (
+    }
+
+ret:
+    CloseDB(dbp);
+    return json;
+}
+
+
+JsonElement *GetOldPackagesMatching(const char *regex_package,
+                                    const char *regex_version,
+                                    const char *regex_arch,
+                                    const char *regex_method,
+                                    bool upgrades)
+{
     pcre *matcher;
     {
-        const char *regex_package = RlistScalarValue(finalargs);
-        const char *regex_version = RlistScalarValue(finalargs->next);
-        const char *regex_arch = RlistScalarValue(finalargs->next->next);
-        const char *regex_method = RlistScalarValue(finalargs->next->next->next);
         char regex[CF_BUFSIZE];
 
         // Here we will truncate the regex if the parameters add up to over CF_BUFSIZE
@@ -42,38 +93,37 @@ JsonElement *GetOldPackagesMatching(const char *package,
         matcher = CompileRegex(regex);
         if (matcher == NULL)
         {
-            return FnFailure();
+            return NULL;
         }
     }
 
     char filename[CF_MAXVARSIZE];
-    if (installed_mode)
-    {
-        GetSoftwareCacheFilename(filename);
-    }
-    else
+    if (upgrades)
     {
         GetSoftwarePatchesFilename(filename);
     }
+    else
+    {
+        GetSoftwareCacheFilename(filename);
+    }
 
-    Log(LOG_LEVEL_DEBUG, "%s: reading inventory from '%s'", fp->name, filename);
+    Log(LOG_LEVEL_DEBUG, "Reading package inventory from '%s'", filename);
 
     FILE *const fin = fopen(filename, "r");
     if (fin == NULL)
     {
         Log(LOG_LEVEL_VERBOSE,
-            "%s cannot open the %s packages inventory '%s' - "
+            "Cannot open the %s packages inventory '%s' - "
             "This is not necessarily an error. "
             "Either the inventory policy has not been included, "
             "or it has not had time to have an effect yet. "
             "A future call may still succeed. (fopen: %s)",
-            fp->name,
-            installed_mode ? "installed" : "available",
+            upgrades ? "available" : "installed",
             filename,
             GetErrorStr());
 
         pcre_free(matcher);
-        return FnFailure();
+        return NULL;
     }
 
     JsonElement *json = JsonArrayCreate(50);
@@ -130,8 +180,8 @@ JsonElement *GetOldPackagesMatching(const char *package,
             "Unable to read (%s) package inventory from '%s'.",
             errstr, filename);
         JsonDestroy(json);
-        return FnFailure();
+        return NULL;
     }
 
-    return (FnCallResult) { FNCALL_SUCCESS, (Rval) { json, RVAL_TYPE_CONTAINER } };
+    return json;
 }

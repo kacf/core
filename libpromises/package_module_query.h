@@ -24,13 +24,19 @@
 
 #include <json.h>
 
-enum PackagesMatchingType
-{
-    PackagesMatchingInstalled,
-    PackagesMatchingUpdates
-};
+// Pointer to function, cf-agent will fill it with an implementation, non-
+// agent binaries will use noop (IOW you cannot fill the database in cf-serverd,
+// but you can query it).
+extern void (*MaybeUpdatePackagesCache)(EvalContext *ctx, bool force_update);
 
-JsonElement *GetOldPackagesMatching(const char *package,
-                                    const char *version,
-                                    const char *arch,
-                                    const char *method);
+JsonElement *GetNewPackagesMatching(const char *regex_package,
+                                    const char *regex_version,
+                                    const char *regex_arch,
+                                    const char *regex_method,
+                                    bool upgrades);
+
+JsonElement *GetOldPackagesMatching(const char *regex_package,
+                                    const char *regex_version,
+                                    const char *regex_arch,
+                                    const char *regex_method,
+                                    bool upgrades);
