@@ -1,3 +1,13 @@
+#!/bin/sh
+
+if [ -x /usr/bin/python3 ]
+then
+    PYTHON=/usr/bin/python3
+else
+    PYTHON=/usr/bin/python
+fi
+
+$PYTHON - <<EOF
 #!/usr/bin/python
 
 from __future__ import print_function
@@ -71,9 +81,9 @@ git = subprocess.Popen(["git",
                         "--abbrev=0",
                         REV],
                        stdout=subprocess.PIPE)
-recent_tag = git.stdout.readlines()[0].strip()
+recent_tag = git.stdout.readlines()[0].strip().decode()
 git = subprocess.Popen(["git", "rev-parse", recent_tag + "^{}"], stdout=subprocess.PIPE)
-recent_rev = git.stdout.readlines()[0].strip()
+recent_rev = git.stdout.readlines()[0].strip().decode()
 
 # Find its version, if any.
 recent_version = extract_version_components(recent_tag)
@@ -119,10 +129,29 @@ def version_cmp(a, b):
 
     return 0
 
+def cmp_to_key(mycmp):
+    'Convert a cmp= function into a key= function'
+    class K:
+        def __init__(self, obj, *args):
+            self.obj = obj
+        def __lt__(self, other):
+            return mycmp(self.obj, other.obj) < 0
+        def __gt__(self, other):
+            return mycmp(self.obj, other.obj) > 0
+        def __eq__(self, other):
+            return mycmp(self.obj, other.obj) == 0
+        def __le__(self, other):
+            return mycmp(self.obj, other.obj) <= 0
+        def __ge__(self, other):
+            return mycmp(self.obj, other.obj) >= 0
+        def __ne__(self, other):
+            return mycmp(self.obj, other.obj) != 0
+    return K
+
 git_tag_list = subprocess.Popen(tag_finder, stdout=subprocess.PIPE)
 all_tags = []
 for tag in git_tag_list.stdout.readlines():
-    tag = tag.strip()
+    tag = tag.strip().decode()
     git_rev = subprocess.Popen(["git", "rev-parse", tag + "^{}"], stdout=subprocess.PIPE)
     rev = git_rev.stdout.readlines()[0].strip()
     if rev == recent_rev:
@@ -133,7 +162,7 @@ for tag in git_tag_list.stdout.readlines():
         # Ignore non-version tags.
         continue
     all_tags.append(match)
-all_tags = sorted(all_tags, cmp=version_cmp, reverse=True)
+all_tags = sorted(all_tags, key=cmp_to_key(version_cmp), reverse=True)
 
 if len(all_tags) > 1:
     # This is a new minor version
@@ -147,3 +176,5 @@ else:
     else:
         print("%s.%s.%d" % (recent_major, recent_minor, int(recent_patch) + 1))
 sys.exit(0)
+
+EOF
